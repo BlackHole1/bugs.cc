@@ -9,7 +9,12 @@
  * Based on https://posthog.com/docs/advanced/proxy/cloudflare:
  * - `/static/*` and `/array/*` (SDK, lazy-loaded extras, remote config) come
  *   from the assets host and are cached at the edge (the zone-wide purge in
- *   deploy.yml also drops them; they are simply fetched again).
+ *   deploy.yml also drops them; they are simply fetched again). The assets
+ *   host only answers `Access-Control-Allow-Origin` for `/array/*` when the
+ *   request carries an `Origin`, and the edge cache ignores `Origin`, so a
+ *   cached copy without the header would break the SDK's `crossorigin`
+ *   script and `fetch`: every asset response gets `*` here instead, and an
+ *   OPTIONS preflight is answered directly.
  * - Everything else (`/e/`, `/flags/`, `/i/v0/e/`, ...) is forwarded to the
  *   API host with the body buffered, cookies removed and the real client IP
  *   in `X-Forwarded-For` (otherwise every visitor is located at the
@@ -31,12 +36,30 @@ async function handleRequest(request, ctx) {
 }
 
 async function retrieveAsset(request, pathWithParams, ctx) {
+  if (request.method === 'OPTIONS') {
+    return withCors(new Response(null, { status: 204 }));
+  }
   let response = await caches.default.match(request);
   if (!response) {
     response = await fetch(`https://${ASSET_HOST}${pathWithParams}`);
     ctx.waitUntil(caches.default.put(request, response.clone()));
   }
-  return response;
+  return withCors(response);
+}
+
+/** Public, credential-less assets: allow every origin (the SDK loads them with `crossorigin`). */
+function withCors(response) {
+  const headers = new Headers(response.headers);
+  headers.set('Access-Control-Allow-Origin', '*');
+  headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  headers.set('Access-Control-Allow-Headers', '*');
+  // `*` is invalid together with credentials, and these assets never need them.
+  headers.delete('Access-Control-Allow-Credentials');
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
 
 async function forwardRequest(request, pathWithParams) {
