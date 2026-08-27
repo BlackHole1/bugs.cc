@@ -27,6 +27,10 @@ bun install
 
 CI on pull requests and on pushes outside `main` runs lint, fmt:check, check, test, img --check, and build in that order. On a push to `main`, `deploy.yml` runs the same steps and publishes to GitHub Pages only if they all pass.
 
+## Analytics
+
+PostHog (EU Cloud, project `bugs.cc`) through the Cloudflare Worker at `t.bugs.cc`, so the browser never contacts a posthog.com host. A small inline loader (`src/components/Analytics.astro`) appends the hosted `array.js` only after the `load` event, in an idle slot, and once a prerendered page is actually shown, so it cannot delay the page. Config: `SITE.posthog` in `src/lib/site.ts`. Worker source: `cloudflare/posthog-proxy.worker.js`, deployed with `CLOUDFLARE_API_TOKEN=... bunx wrangler@latest deploy -c cloudflare/wrangler.toml` (the custom domain `t.bugs.cc` is a route in `cloudflare/wrangler.toml`). Not loaded by `bun run dev`; `bun run preview` reports as an internal user.
+
 ## Writing posts
 
 Create `src/content/posts/<lang>/<slug>.md` (use `.mdx` when the post needs a component). The file name is the URL: `/posts/<slug>/` or `/zh/posts/<slug>/`.

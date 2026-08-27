@@ -1,5 +1,6 @@
 ---
 import { Font } from 'astro:assets';
+import Analytics from '@/components/Analytics.astro';
 import Footer from '@/components/Footer.astro';
 import Header from '@/components/Header.astro';
 import Seo from '@/components/Seo.astro';
@@ -97,5 +98,7 @@ const switchFallback = switchHref === undefined && alternates[lang] !== undefine
       <slot />
     </main>
     <Footer lang={lang} />
+    <!-- PostHog; the SDK is only fetched after `load` (see Analytics.astro). -->
+    <Analytics />
   </body>
 </html>
