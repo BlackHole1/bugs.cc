@@ -18,7 +18,7 @@ const t = useTranslations(lang);
 ---
 
 <header class="site-header">
-  <a class="site-title" href={homeUrl(lang)}>
+  <a class="site-title" href={homeUrl(lang)} data-astro-prefetch="viewport">
     <Image
       class="site-logo"
       src={avatar}

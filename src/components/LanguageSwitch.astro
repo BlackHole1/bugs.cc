@@ -59,6 +59,7 @@ const tOther = useTranslations(other);
       hreflang={tOther.htmlLang}
       lang={tOther.htmlLang}
       title={t.nav.languageSwitch}
+      data-astro-prefetch="viewport"
     >
       <Languages class="nav-icon" size={16} aria-hidden="true" focusable="false" />
       <span class="link-text">{tOther.nativeName}</span>

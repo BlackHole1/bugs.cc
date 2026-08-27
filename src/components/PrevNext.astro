@@ -18,7 +18,7 @@ const t = useTranslations(lang);
   (prev || next) && (
     <nav class="prev-next" aria-label={t.post.postNav}>
       {prev && (
-        <a class="prev-next-link prev" href={prev.href} rel="prev">
+        <a class="prev-next-link prev" href={prev.href} rel="prev" data-astro-prefetch="viewport">
           <ArrowLeft class="prev-next-icon" size={16} aria-hidden="true" focusable="false" />
           <span>
             <span class="prev-next-label">{t.post.previous}</span>
@@ -27,7 +27,7 @@ const t = useTranslations(lang);
         </a>
       )}
       {next && (
-        <a class="prev-next-link next" href={next.href} rel="next">
+        <a class="prev-next-link next" href={next.href} rel="next" data-astro-prefetch="viewport">
           <span>
             <span class="prev-next-label">{t.post.next}</span>
             <span class="link-text">{next.title}</span>

@@ -23,12 +23,22 @@ const current = (href: string) => (currentPath === href ? 'page' : undefined);
 <nav class="site-nav" aria-label={t.nav.label}>
   <ul>
     <li>
-      <a class="nav-link" href={homeUrl(lang)} aria-current={current(homeUrl(lang))}>
+      <a
+        class="nav-link"
+        href={homeUrl(lang)}
+        aria-current={current(homeUrl(lang))}
+        data-astro-prefetch="viewport"
+      >
         <span class="link-text">{t.nav.home}</span>
       </a>
     </li>
     <li>
-      <a class="nav-link" href={postsIndexUrl(lang)} aria-current={current(postsIndexUrl(lang))}>
+      <a
+        class="nav-link"
+        href={postsIndexUrl(lang)}
+        aria-current={current(postsIndexUrl(lang))}
+        data-astro-prefetch="viewport"
+      >
         <span class="link-text">{t.nav.posts}</span>
       </a>
     </li>
@@ -37,12 +47,18 @@ const current = (href: string) => (currentPath === href ? 'page' : undefined);
         class="nav-link"
         href={projectsIndexUrl(lang)}
         aria-current={current(projectsIndexUrl(lang))}
+        data-astro-prefetch="viewport"
       >
         <span class="link-text">{t.nav.projects}</span>
       </a>
     </li>
     <li>
-      <a class="nav-link" href={feedUrl(lang)} type="application/rss+xml">
+      <a
+        class="nav-link"
+        href={feedUrl(lang)}
+        type="application/rss+xml"
+        data-astro-prefetch="false"
+      >
         <Rss class="nav-icon" size={16} aria-hidden="true" focusable="false" />
         <span class="link-text">{t.nav.rss}</span>
       </a>

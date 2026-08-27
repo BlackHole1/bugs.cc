@@ -68,7 +68,7 @@ if (html !== undefined) {
       recent.length === 0 ? (
         <p>{t.home.noPosts}</p>
       ) : (
-        <PostList posts={recent} {lang} labelledBy="recent-heading" />
+        <PostList posts={recent} {lang} labelledBy="recent-heading" prefetch="viewport" />
       )
     }
     <p><a href={postsIndexUrl(lang)}>{t.home.allPosts}</a></p>

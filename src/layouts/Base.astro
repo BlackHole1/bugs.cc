@@ -1,6 +1,5 @@
 ---
 import { Font } from 'astro:assets';
-import Analytics from '@/components/Analytics.astro';
 import Footer from '@/components/Footer.astro';
 import Header from '@/components/Header.astro';
 import Seo from '@/components/Seo.astro';
@@ -98,7 +97,5 @@ const switchFallback = switchHref === undefined && alternates[lang] !== undefine
       <slot />
     </main>
     <Footer lang={lang} />
-    <!-- Last in <body>: Umami is injected only after the `load` event (see Analytics.astro). -->
-    <Analytics />
   </body>
 </html>

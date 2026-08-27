@@ -19,6 +19,15 @@ export default defineConfig({
   // Inline every stylesheet: the whole site CSS is ~3 KB gzipped and a
   // render-blocking request costs a full round trip on slow mobile (LCP).
   build: { format: 'directory', inlineStylesheets: 'always' },
+  // Prefetch same-origin links so a click lands on an already cached page:
+  // hover (80 ms debounce) for every link by default, `data-astro-prefetch="viewport"`
+  // on the navigation, post lists and prev/next (also covers touch devices),
+  // `data-astro-prefetch="false"` on feeds / text files. Skipped automatically on
+  // save-data / 2g connections. With `clientPrerender`, Chromium prerenders the
+  // prefetched page via the Speculation Rules API (a click is then a swap, not a
+  // load); other browsers fall back to a plain prefetch.
+  prefetch: { prefetchAll: true, defaultStrategy: 'hover' },
+  experimental: { clientPrerender: true },
   i18n: {
     defaultLocale: 'en',
     locales: ['en', 'zh'],

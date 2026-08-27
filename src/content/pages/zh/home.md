@@ -7,7 +7,7 @@ Coder, Gamer, Father, Co-founder [OOMOL]
 
 ### 联系方式
 
-- Email: bh@bugs.cc
+- Email: <!--email_off-->bh@bugs.cc<!--/email_off-->
 - GitHub: [BlackHole1]
 - Twitter: [Free_BlackHole]
 - Mastodon: [Black_Hole]
@@ -20,7 +20,7 @@ Coder, Gamer, Father, Co-founder [OOMOL]
 ### GPG
 
 - 指纹: [`D3C4 321B EAAC C82B`]
-- UID: `Kevin Cui (bugs.cc) <bh@bugs.cc>`
+- UID: <!--email_off-->`Kevin Cui (bugs.cc) <bh@bugs.cc>`<!--/email_off-->
 
 ## 开源
 
