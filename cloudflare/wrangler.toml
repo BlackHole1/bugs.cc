@@ -1,0 +1,9 @@
+# `bunx wrangler deploy -c cloudflare/wrangler.toml` (needs CLOUDFLARE_API_TOKEN
+# with Workers Scripts Edit + Workers Routes Edit on bugs.cc). The custom
+# domain t.bugs.cc is managed by this route: Cloudflare creates the DNS record
+# and the certificate itself.
+name = "posthog-proxy"
+main = "posthog-proxy.worker.js"
+compatibility_date = "2026-08-01"
+workers_dev = false
+routes = [{ pattern = "t.bugs.cc", custom_domain = true }]

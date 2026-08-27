@@ -1,0 +1,47 @@
+---
+/**
+ * PostHog page analytics, loaded so that `t.bugs.cc` (the Cloudflare Worker
+ * in front of PostHog EU, cloudflare/posthog-proxy.worker.js) can never
+ * affect the page.
+ *
+ * A static `<script src>` (even `defer` / `async` in `<head>`) or a preconnect
+ * would put a third-party fetch on the page's critical path: a `defer` script
+ * sits in the document's ordered "execute after parsing" list together with
+ * every module script (table of contents, Lightbox, Expressive Code), so while
+ * it hangs none of them run and `DOMContentLoaded` / `load` wait (Umami used
+ * to cost 17 to 55 s per page on a network that black-holed its host).
+ *
+ * This component ships a ~450-byte inline loader instead. It waits for the
+ * window `load` event, then for an idle slot (`requestIdleCallback`, 3 s
+ * timeout), then, if the page was prerendered through the Speculation Rules
+ * API (`experimental.clientPrerender`), for the page to actually be shown
+ * (`document.prerendering` / `prerenderingchange`, so a prerendered page that
+ * is never visited is not a page view). Only then does it append
+ * `<script async src="https://t.bugs.cc/static/array.js">` and call
+ * `posthog.init` once that has loaded. Rendering, the load event and the
+ * in-page scripts are exactly as if there were no analytics at all; a slow or
+ * blocked `t.bugs.cc` only delays the page-view event.
+ *
+ * The SDK is the hosted `array.js` (always current, edge-cached by the
+ * Worker) rather than an npm bundle: Astro cannot inline a script that
+ * contains an `import()`, so a bundled SDK would cost an extra module script
+ * request on every page load. Config lives in `SITE.posthog`. Not rendered
+ * in `astro dev`; `astro preview` reports (PostHog marks localhost as an
+ * internal user). Redirect pages carry no analytics (they do not use
+ * Base.astro).
+ */
+import { SITE } from '@/lib/site';
+
+const token = JSON.stringify(SITE.posthog.token);
+const apiHost = JSON.stringify(SITE.posthog.apiHost);
+const uiHost = JSON.stringify(SITE.posthog.uiHost);
+
+// Kept as a plain string (not `define:vars`) so the values stay inside the
+// IIFE instead of becoming globals, and `is:inline` leaves it byte-for-byte.
+// `defaults: '2026-05-30'` is what the PostHog app recommends today (page
+// views also on history changes, localhost is an internal user, extras are
+// injected into <head>); `person_profiles` is the default, spelled out.
+const loader = `(function(){var api=${apiHost};var init=function(){window.posthog&&posthog.init(${token},{api_host:api,ui_host:${uiHost},defaults:'2026-05-30',person_profiles:'identified_only'})};var inject=function(){var s=document.createElement('script');s.async=true;s.crossOrigin='anonymous';s.src=api+'/static/array.js';s.onload=init;document.head.appendChild(s)};var shown=function(){document.prerendering?document.addEventListener('prerenderingchange',inject,{once:true}):inject()};var idle=function(){'requestIdleCallback'in window?requestIdleCallback(shown,{timeout:3000}):setTimeout(shown,0)};document.readyState==='complete'?idle():addEventListener('load',idle,{once:true})})();`;
+---
+
+{!import.meta.env.DEV && <script is:inline data-analytics="posthog" set:html={loader} />}

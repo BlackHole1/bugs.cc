@@ -20,3 +20,6 @@ bun.lockb
 .DS_Store
 .idea/
 *.swp
+
+# wrangler (cloudflare/wrangler.toml)
+.wrangler/
