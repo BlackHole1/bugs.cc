@@ -12,9 +12,11 @@ export interface Props {
   lang: Lang;
   /** Optional id of the heading that names this list (`aria-labelledby`). */
   labelledBy?: string | undefined;
+  /** Prefetch strategy of the post links (default: the site-wide hover). */
+  prefetch?: 'viewport' | undefined;
 }
 
-const { posts, lang, labelledBy } = Astro.props;
+const { posts, lang, labelledBy, prefetch } = Astro.props;
 // The list may sit on a page of the other language (home page bio): tag it
 // with the posts' BCP 47 tag (`en` / `zh-Hans`), not the internal code.
 const t = useTranslations(lang);
@@ -25,7 +27,9 @@ const t = useTranslations(lang);
     posts.map((post) => (
       <li>
         <time datetime={toIsoWithOffset(post.data.date)}>{formatDate(post.data.date)}</time>
-        <a href={pathOf(post)}>{post.data.title}</a>
+        <a href={pathOf(post)} data-astro-prefetch={prefetch}>
+          {post.data.title}
+        </a>
       </li>
     ))
   }

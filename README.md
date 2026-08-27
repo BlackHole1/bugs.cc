@@ -21,7 +21,7 @@ bun install
 | `bun run check` / `lint` / `fmt` / `fmt:check` | Typecheck, oxlint + markdownlint, format                                                                                         |
 | `bun run lint:md` / `lint:md:fix`              | markdownlint on every `.md` / `.mdx` (README, posts, pages); `:fix` rewrites what is fixable. Config: `.markdownlint-cli2.jsonc` |
 | `bun run test`                                 | vitest: source-level content checks plus unit tests, no prior build needed                                                       |
-| `bun run img`                                  | Compress PNGs under `public/images/`; `--check` only checks, used as a CI gate                                                   |
+| `bun run img`                                  | Compress PNGs and JPEGs under `public/images/`; `--check` only checks, used as a CI gate                                         |
 | `bun run og` / `favicon` / `font`              | Regenerate the OG image, favicon, and code-font subset. Only needed when those assets change.                                    |
 | `bun run lh`                                   | After a build, run Lighthouse on the main pages (desktop + mobile). Reports go to `.lh/`.                                        |
 
@@ -47,6 +47,7 @@ aliases: [/zh/p/old-url/] # old URL, full path (language prefix and trailing sla
 - Slugs are lowercase letters, digits, and `-` only (a `.` is allowed in version numbers).
 - Start the body at `##`. If a heading contains Chinese, add `{#id}` at the end of the line for an ASCII anchor (write `\{#id\}` in `.mdx`).
 - Put images in `public/images/<slug>/` and reference them as `/images/<slug>/x.png`. Do not hotlink off-site images. Run `bun run img` before committing.
+- Images get `width`/`height` and lazy loading automatically. The first image of a post is loaded eagerly (`fetchpriority="high"`) when it sits near the top, since it is then the page's LCP element; an explicit `loading=` attribute on an `<img>` is kept as written.
 - Code blocks support Expressive Code `title=` / `{1,3-5}` / `ins=` / `del=` / `collapse=`, and comment markers `// [!code highlight]`, `// [!code ++]`, `// [!code --]`, `// [!code word:foo]`.
 
 Full conventions, routes, and implementation decisions are in [AGENTS.md](AGENTS.md).

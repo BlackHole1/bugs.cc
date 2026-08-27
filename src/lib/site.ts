@@ -15,10 +15,6 @@ export const SITE = {
   ogImage: '/img/og.png',
   avatar: '/img/avatar.jpg',
   themeColor: '#101010',
-  umami: {
-    src: 'https://cloud.umami.is/script.js',
-    websiteId: 'e759f855-c180-40d0-9229-b0322827f7f7',
-  },
   /** Follow (follow.is) feed ownership challenge ids. Must stay exactly as-is. */
   follow: {
     userId: '67028119038586880',

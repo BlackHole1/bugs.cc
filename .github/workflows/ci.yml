@@ -42,7 +42,7 @@ jobs:
       - name: Tests
         run: bun run test
 
-      # Fails when a PNG under public/images/ has not been through `bun run img`.
+      # Fails when a PNG or JPEG under public/images/ has not been through `bun run img`.
       - name: Image check
         run: bun run img --check
 

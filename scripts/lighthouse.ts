@@ -18,12 +18,7 @@
  *   LH_SKIP_BUILD  `1` reuses the existing dist/
  *   LH_PRESETS     comma list, default `desktop,mobile`
  *   LH_BLOCK       comma list of URL patterns to block (`--blocked-url-patterns`).
- *                  Default: none, except that the Umami script is blocked
- *                  automatically when it cannot be fetched from this machine.
- *                  The page injects it only after `load` (Analytics.astro), so
- *                  it no longer delays the page itself, but a request that
- *                  never answers keeps Lighthouse waiting for its network-quiet
- *                  limit. A warning is printed in that case.
+ *                  Default: none.
  */
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
@@ -191,18 +186,6 @@ function summarize(page: string, preset: Preset, lhr: Lhr): Result {
   return { page, preset, scores, failing: [...failing] };
 }
 
-const UMAMI = 'https://cloud.umami.is/script.js';
-
-/** True when `url` answers within `ms` milliseconds. */
-async function reachable(url: string, ms = 5000): Promise<boolean> {
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(ms), method: 'HEAD' });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
 if (process.env.LH_SKIP_BUILD !== '1' || !existsSync(path.join(root, 'dist/index.html'))) {
   await run('bun', ['run', 'build']);
 }
@@ -212,13 +195,6 @@ const blocked = (process.env.LH_BLOCK ?? '')
   .split(',')
   .map((p) => p.trim())
   .filter(Boolean);
-if (!(await reachable(UMAMI))) {
-  console.warn(
-    `warning: ${UMAMI} is unreachable from this machine; blocking it for this run. ` +
-      'Its cost is NOT measured in these reports.',
-  );
-  blocked.push('*cloud.umami.is*');
-}
 
 const { server, port } = await serveDist();
 const base = `http://127.0.0.1:${port}`;
