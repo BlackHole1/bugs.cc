@@ -1,0 +1,38 @@
+---
+title: Run a qcow2 image in VMware
+description: Convert qcow2 to vmdk with qemu-img
+date: 2018-01-23T09:12:31+08:00
+tags:
+  - virtualization
+translationKey: run-qcow2-image-in-vmware
+---
+
+import YouTube from "../../../components/content/YouTube.astro";
+
+## Intro
+
+For some reason I needed to run a qcow2 image on my laptop. Standing up an OpenStack platform was out of the question; the hardware could not take it. I wanted to see if I could just run the qcow2 image in VMware. Everything online said to convert it with `qemu-img`, and then the write-ups just stopped. So I poked at it myself and wrote the process down.
+
+## Preparation
+
+First download `qemu-img`. I was on 64-bit Windows, so I grabbed the [win64 build](https://qemu.weilnetz.de/w64/). After it is installed, add the install directory to `PATH` so the rest is easier.
+
+I will skip VMware itself and the original qcow2 image. You need both.
+
+## Steps
+
+First convert the qcow2 image to vmdk with `qemu-img`:
+
+```bash
+$ qemu-img convert -f qcow2 CentOS_7.2_x86_64_XD.qcow2 -O vmdk Centos.vmdk
+```
+
+You will get a Centos.vmdk image in the current directory, but you cannot import it: there is no vmx file. Dropping it into VMware throws an error.
+
+So create an empty VM in VMware first. Pick the guest OS from your qcow2; mine was CentOS 7, so I chose CentOS 7 64-bit.
+
+Once that is created, go into that VM's folder under `Virtual Machines`, delete the vmdk, and replace it with the file you converted with `qemu-img`. Start VMware and it should work.
+
+Here is a demo:
+
+<YouTube id="GE1dkDgRSPA" />

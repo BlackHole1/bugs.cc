@@ -1,0 +1,104 @@
+---
+import { Font } from 'astro:assets';
+import Analytics from '@/components/Analytics.astro';
+import Footer from '@/components/Footer.astro';
+import Header from '@/components/Header.astro';
+import Seo from '@/components/Seo.astro';
+import SkipLink from '@/components/SkipLink.astro';
+import { otherLang, useTranslations, type Lang } from '@/i18n';
+import { SITE } from '@/lib/site';
+import '@/styles/global.css';
+import '@/styles/typography.css';
+import '@/styles/code.css';
+
+export interface Props {
+  lang: Lang;
+  /** Page title without the site suffix. */
+  title: string;
+  /** Non-empty meta description. */
+  description: string;
+  /** Canonical site path of this page, e.g. `/posts/foo/`. */
+  path: string;
+  ogType?: 'website' | 'article' | undefined;
+  /** Site path of the Markdown copy of the page (post pages). */
+  markdown?: string | undefined;
+  /** Same page in each language (for hreflang and the language switch). */
+  alternates?: Partial<Record<Lang, string>> | undefined;
+  /** Preload the code font (only worth it on pages with code blocks). */
+  preloadCodeFont?: boolean | undefined;
+  publishedTime?: Date | undefined;
+  modifiedTime?: Date | undefined;
+  tags?: string[] | undefined;
+  noindex?: boolean | undefined;
+  /** Omit canonical, `og:url` and hreflang (the 404 page). */
+  noCanonical?: boolean | undefined;
+}
+
+const {
+  lang,
+  title,
+  description,
+  path,
+  ogType = 'website',
+  alternates = {},
+  preloadCodeFont = false,
+  publishedTime,
+  modifiedTime,
+  tags = [],
+  noindex = false,
+  noCanonical = false,
+  markdown,
+} = Astro.props;
+
+const t = useTranslations(lang);
+const switchHref = alternates[otherLang(lang)];
+// A page that exists in this language but has no translation: the switch
+// falls back to the other language's home page and says so (the 404 page
+// declares no alternates at all and gets the plain switch).
+const switchFallback = switchHref === undefined && alternates[lang] !== undefined;
+---
+
+<!doctype html>
+<html lang={t.htmlLang} dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <Seo
+      lang={lang}
+      title={title}
+      description={description}
+      path={path}
+      ogType={ogType}
+      alternates={alternates}
+      publishedTime={publishedTime}
+      modifiedTime={modifiedTime}
+      tags={tags}
+      noindex={noindex}
+      noCanonical={noCanonical}
+      markdown={markdown}
+    />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content={SITE.themeColor} />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <Font cssVariable="--font-mono" preload={preloadCodeFont} />
+    <slot name="head" />
+  </head>
+  <body>
+    <SkipLink lang={lang} target="main" />
+    <Header
+      lang={lang}
+      currentPath={path}
+      switchHref={switchHref}
+      switchFallback={switchFallback}
+    />
+    <main id="main" tabindex="-1">
+      <slot />
+    </main>
+    <Footer lang={lang} />
+    <!-- Last in <body>: Umami is injected only after the `load` event (see Analytics.astro). -->
+    <Analytics />
+  </body>
+</html>

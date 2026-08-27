@@ -1,0 +1,59 @@
+---
+/**
+ * Flat `date  title` list of posts, one row each, like the old site.
+ * Reusable on the posts list, tag pages and the home page.
+ */
+import { useTranslations, type Lang } from '@/i18n';
+import { formatDate, toIsoWithOffset } from '@/lib/dates';
+import { pathOf, type Post } from '@/lib/posts';
+
+export interface Props {
+  posts: Post[];
+  lang: Lang;
+  /** Optional id of the heading that names this list (`aria-labelledby`). */
+  labelledBy?: string | undefined;
+}
+
+const { posts, lang, labelledBy } = Astro.props;
+// The list may sit on a page of the other language (home page bio): tag it
+// with the posts' BCP 47 tag (`en` / `zh-Hans`), not the internal code.
+const t = useTranslations(lang);
+---
+
+<ul class="post-list" lang={t.htmlLang} aria-labelledby={labelledBy}>
+  {
+    posts.map((post) => (
+      <li>
+        <time datetime={toIsoWithOffset(post.data.date)}>{formatDate(post.data.date)}</time>
+        <a href={pathOf(post)}>{post.data.title}</a>
+      </li>
+    ))
+  }
+</ul>
+
+<style>
+  .post-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.5rem;
+  }
+
+  .post-list li {
+    display: flex;
+    gap: 0.8em;
+    align-items: baseline;
+    margin: 0;
+    padding: 0.35em 0;
+  }
+
+  .post-list time {
+    flex: none;
+    font-style: italic;
+    font-size: 0.875rem;
+    white-space: nowrap;
+  }
+
+  .post-list a:visited {
+    color: var(--link-visited);
+  }
+</style>

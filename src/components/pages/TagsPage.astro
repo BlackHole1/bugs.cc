@@ -1,0 +1,27 @@
+---
+import TagCloud from '@/components/TagCloud.astro';
+import Base from '@/layouts/Base.astro';
+import { useTranslations, type Lang } from '@/i18n';
+import { getTags } from '@/lib/posts';
+import { tagsIndexUrl } from '@/lib/url';
+
+export interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+// Sorted by count desc, then name (see countTags).
+const tags = await getTags(lang);
+---
+
+<Base
+  lang={lang}
+  title={t.tags.title}
+  description={t.tags.description}
+  path={tagsIndexUrl(lang)}
+  alternates={{ en: tagsIndexUrl('en'), zh: tagsIndexUrl('zh') }}
+>
+  <h1>{t.tags.title}</h1>
+  {tags.length === 0 ? <p>{t.home.noPosts}</p> : <TagCloud {tags} {lang} showCount />}
+</Base>

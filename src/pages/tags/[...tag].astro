@@ -1,0 +1,19 @@
+---
+import TagPage from '@/components/pages/TagPage.astro';
+import { getPostsByTag, getTags } from '@/lib/posts';
+
+// Rest route: the tag `ci/cd` becomes the nested path `/tags/ci/cd/`.
+export async function getStaticPaths() {
+  const tags = await getTags('en');
+  return Promise.all(
+    tags.map(async (tag) => ({
+      params: { tag: tag.slug },
+      props: { tag, posts: await getPostsByTag('en', tag.tag) },
+    })),
+  );
+}
+
+const { tag, posts } = Astro.props;
+---
+
+<TagPage lang="en" tag={tag} posts={posts} />

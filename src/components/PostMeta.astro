@@ -1,0 +1,49 @@
+---
+import { useTranslations, type Lang } from '@/i18n';
+import { formatDate, toIsoWithOffset } from '@/lib/dates';
+import { tagUrl } from '@/lib/url';
+
+/** Byline of a post: date, optional update date, reading time and `#tag` links. */
+export interface Props {
+  lang: Lang;
+  date: Date;
+  updated?: Date | undefined;
+  /** Whole minutes; omitted when unknown. */
+  readingMinutes?: number | undefined;
+  tags?: string[] | undefined;
+}
+
+const { lang, date, updated, readingMinutes, tags = [] } = Astro.props;
+const t = useTranslations(lang);
+const showUpdated = updated !== undefined && formatDate(updated) !== formatDate(date);
+---
+
+<p class="byline">
+  <span class="byline-item">
+    <span class="visually-hidden">{t.post.postedOn} </span>
+    <time datetime={toIsoWithOffset(date)}>{formatDate(date)}</time>
+  </span>
+  {
+    showUpdated && updated && (
+      <span class="byline-item">
+        {t.post.updatedOn} <time datetime={toIsoWithOffset(updated)}>{formatDate(updated)}</time>
+      </span>
+    )
+  }
+  {
+    readingMinutes !== undefined && (
+      <span class="byline-item">{t.post.readingTime(readingMinutes)}</span>
+    )
+  }
+  {
+    tags.length > 0 && (
+      <span class="byline-item byline-tags">
+        {tags.map((tag) => (
+          <a class="tag-link" href={tagUrl(lang, tag)}>
+            <span class="link-text">#{tag.toLowerCase()}</span>
+          </a>
+        ))}
+      </span>
+    )
+  }
+</p>

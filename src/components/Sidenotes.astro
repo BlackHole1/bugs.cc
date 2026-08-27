@@ -1,0 +1,192 @@
+---
+/**
+ * Footnotes as sidenotes in the right margin (>= 1440px). Progressive: the
+ * markup is the GFM footnotes section at the end of the post (plugins/
+ * footnotes), which typography.css turns into a column next to the reading
+ * column on wide screens; without this script the notes simply stack there.
+ *
+ * The script (~2 KB, inlined by Astro) does what Google Docs does with
+ * comments and LessWrong with its sidenotes:
+ * - every note is moved (`transform`) to the height of its reference, and
+ *   notes that would overlap are pushed down in reading order;
+ * - a note is shown only while one of its references is in the viewport
+ *   (IntersectionObserver on the references), and is placed next to the
+ *   topmost visible reference when it has several;
+ * - hovering or focusing a reference or a note makes the pair active: the
+ *   note is pinned next to its reference (notes above are pushed up, notes
+ *   below down) and both are highlighted; the active note ignores the 60vh
+ *   clip;
+ * - clicking a reference or a back link moves focus to its target without
+ *   scrolling (the target is already alongside), instead of the hash jump.
+ * Layout is redone when the body or a note changes size (images, fonts, the
+ * clip toggling), at the breakpoint and after web fonts load. One frame reads
+ * every position first and writes every transform afterwards.
+ *
+ * Without transforms the notes are the no-JS stack at the top of the column,
+ * so a note's first position after the column appears must not be animated:
+ * it would otherwise slide from the top of the column to its place. That
+ * happens on load and every time the viewport crosses the breakpoint from
+ * narrow to wide (the transforms are cleared below it), so both go through
+ * `settle()`: the section is marked `init` (transitions off, notes hidden),
+ * laid out, and two frames later switched to the normal state. For the first
+ * paint a blocking inline script sets `init` before the page is painted (only
+ * when the browser will run the module below, so nothing stays hidden
+ * elsewhere).
+ */
+---
+
+<script is:inline>
+  if ('noModule' in HTMLScriptElement.prototype) {
+    const s = document.querySelector('.post-body section[data-footnotes]');
+    if (s) s.setAttribute('data-sidenotes', 'init');
+  }
+</script>
+
+<script>
+  const section = document.querySelector<HTMLElement>('.post-body section[data-footnotes]');
+  const body = section?.closest<HTMLElement>('.post-body');
+  if (section && body) {
+    // Keep in sync with the sidenote rules in typography.css.
+    const wide = matchMedia('(min-width: 1440px)');
+    const GAP = 12;
+
+    interface Pair {
+      li: HTMLLIElement;
+      refs: HTMLAnchorElement[];
+    }
+    const notes = [...section.querySelectorAll<HTMLLIElement>(':scope > ol > li')];
+    const byId = new Map<string, Pair>(notes.map((li) => [li.id, { li, refs: [] }]));
+    for (const a of body.querySelectorAll<HTMLAnchorElement>('a[data-footnote-ref]')) {
+      byId.get(decodeURIComponent(a.hash.slice(1)))?.refs.push(a);
+    }
+    const pairs = [...byId.values()].filter((p) => p.refs.length > 0);
+    for (const li of notes) li.tabIndex = -1;
+
+    const inView = new Set<Element>();
+    let active: Pair | undefined;
+    let frame = 0;
+
+    const anchorOf = (p: Pair) => p.refs.find((a) => inView.has(a)) ?? p.refs[0]!;
+
+    const layout = () => {
+      frame = 0;
+      if (!wide.matches) {
+        for (const li of notes) li.style.transform = '';
+        return;
+      }
+      // Reads.
+      const base = section.getBoundingClientRect().top;
+      const top = pairs.map((p) => Math.round(anchorOf(p).getBoundingClientRect().top - base));
+      const height = pairs.map((p) => p.li.offsetHeight);
+      const clipped = pairs.map((p) => p.li.scrollHeight > p.li.clientHeight + 1);
+      // Reading order of the anchors (a note can hang from its second reference).
+      const order = pairs.map((_, i) => i).toSorted((a, b) => top[a]! - top[b]!);
+      const pinned = active ? order.indexOf(pairs.indexOf(active)) : -1;
+      for (let k = pinned - 1; k >= 0; k--) {
+        const i = order[k]!;
+        const below = order[k + 1]!;
+        top[i] = Math.min(top[i]!, top[below]! - height[i]! - GAP);
+      }
+      let floor = 0;
+      for (const i of order) {
+        top[i] = Math.max(top[i]!, floor);
+        floor = top[i]! + height[i]! + GAP;
+      }
+      // Writes.
+      pairs.forEach((p, i) => {
+        p.li.style.transform = `translateY(${top[i]}px)`;
+        p.li.classList.toggle('is-clipped', clipped[i]!);
+      });
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(layout);
+    };
+
+    const setActive = (next: Pair | undefined) => {
+      if (next === active) return;
+      for (const p of [active, next]) {
+        if (!p) continue;
+        const on = p === next;
+        p.li.classList.toggle('is-active', on);
+        for (const a of p.refs) a.classList.toggle('is-active', on);
+      }
+      active = next;
+      schedule();
+    };
+    const pairOf = (target: EventTarget | null): Pair | undefined => {
+      if (!(target instanceof Element)) return undefined;
+      const el = target.closest<HTMLElement>('a[data-footnote-ref], .footnotes li');
+      if (!el) return undefined;
+      const id = el instanceof HTMLAnchorElement ? decodeURIComponent(el.hash.slice(1)) : el.id;
+      return byId.get(id);
+    };
+    // Leaving is delayed a little so the pointer can travel from a reference
+    // to its note across the gap without the note moving away.
+    let leaving = 0;
+    const enter = (p: Pair | undefined) => {
+      clearTimeout(leaving);
+      if (p) setActive(p);
+    };
+    const leave = (p: Pair | undefined, to: EventTarget | null) => {
+      if (!p || pairOf(to) === p) return;
+      clearTimeout(leaving);
+      leaving = window.setTimeout(() => setActive(undefined), 150);
+    };
+    body.addEventListener('mouseover', (e) => enter(pairOf(e.target)));
+    body.addEventListener('mouseout', (e) => leave(pairOf(e.target), e.relatedTarget));
+    body.addEventListener('focusin', (e) => enter(pairOf(e.target)));
+    body.addEventListener('focusout', (e) => leave(pairOf(e.target), e.relatedTarget));
+    // The target of a reference or back link is already alongside: move focus
+    // there without the hash jump.
+    body.addEventListener('click', (e) => {
+      if (!wide.matches || !(e.target instanceof Element)) return;
+      const a = e.target.closest<HTMLAnchorElement>(
+        'a[data-footnote-ref], a[data-footnote-backref]',
+      );
+      const target = a && document.getElementById(decodeURIComponent(a.hash.slice(1)));
+      if (!target) return;
+      e.preventDefault();
+      target.focus({ preventScroll: true });
+    });
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) inView.add(e.target);
+          else inView.delete(e.target);
+        }
+        for (const p of pairs) {
+          p.li.classList.toggle(
+            'is-visible',
+            p.refs.some((a) => inView.has(a)),
+          );
+        }
+        schedule();
+      },
+      { rootMargin: '0px 0px -10% 0px' },
+    );
+    for (const p of pairs) for (const a of p.refs) io.observe(a);
+
+    // Lay the notes out without transitions (see the comment at the top).
+    let settling = 0;
+    const settle = () => {
+      section.dataset.sidenotes = 'init';
+      cancelAnimationFrame(frame);
+      layout();
+      cancelAnimationFrame(settling);
+      settling = requestAnimationFrame(() => {
+        settling = requestAnimationFrame(() => {
+          section.dataset.sidenotes = '';
+        });
+      });
+    };
+
+    const resize = new ResizeObserver(schedule);
+    resize.observe(body);
+    for (const li of notes) resize.observe(li);
+    wide.addEventListener('change', settle);
+    document.fonts?.ready.then(schedule);
+
+    settle();
+  }
+</script>

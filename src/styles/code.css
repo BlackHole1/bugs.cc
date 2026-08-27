@@ -1,0 +1,42 @@
+/* Code: inline code and adjustments around Expressive Code frames. */
+
+code,
+kbd,
+samp,
+pre {
+  font-family: var(--font-mono);
+  font-variant-ligatures: contextual;
+  font-feature-settings:
+    'calt' 1,
+    'liga' 1;
+}
+
+/* Inline code (not inside Expressive Code frames). */
+:not(pre) > code {
+  color: var(--inline-code);
+  background: var(--inline-code-bg);
+  font-size: 0.85em;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+
+/* Plain <pre> blocks that were not handled by Expressive Code. */
+pre:not(.expressive-code pre) {
+  background: var(--code-bg);
+  color: #f8f8f2;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  padding: 1em;
+  border-radius: 6px;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* Expressive Code frames: only the vertical rhythm is ours. Long lines scroll
+   inside the frame through EC's own base style (`.expressive-code pre
+   { overflow-x: auto }`), and the auto-width block elements can never be
+   wider than the column, so no `max-width` is needed. */
+.expressive-code {
+  margin: 1.25em 0;
+}

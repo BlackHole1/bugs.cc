@@ -1,0 +1,680 @@
+---
+import { DEFAULT_LANG, isLang } from '@/i18n/types';
+import { useTranslations } from '@/i18n';
+import {
+  chartHeight,
+  cpuDay,
+  FULL_VIEW,
+  PAD_L,
+  PAD_R,
+  PANEL_H,
+  panelBottom,
+  panelTop,
+  PLOT_W,
+  seriesPath,
+  TICK_GAP,
+  TICK_H,
+  timeTicks,
+  W,
+  WINDOW,
+  xOf,
+  yOf,
+} from './cpu-day-chart';
+
+/**
+ * Minute-level CPU of three pods over one day with every Kafka produce marked
+ * below each panel, for the "Bun CPU spin" post. The SVG is rendered at build
+ * time from `src/data/troubleshooting-bun-kafkajs-cpu-spin/cpu-day.json`, so
+ * the chart reads without JavaScript. The script adds a crosshair with the
+ * value of every pod, drag-to-zoom (double-click or Escape resets) and a
+ * keyboard cursor; the "600 s after each produce" overlay is a checkbox and
+ * works with CSS alone. `image`/`alt` name the static PNG that the RSS feed
+ * shows instead of the component (`src/lib/feed.ts`).
+ */
+interface Props {
+  /** Static fallback used by the feed, root-relative. */
+  image: string;
+  /** Accessible name of the chart; also the feed image's alt. */
+  alt: string;
+}
+
+const { alt } = Astro.props;
+const locale = Astro.currentLocale ?? DEFAULT_LANG;
+const t = useTranslations(isLang(locale) ? locale : DEFAULT_LANG).content.cpuDay;
+
+// One chart per page: fixed ids keep the build output deterministic.
+const id = 'cpu-day';
+const view = FULL_VIEW;
+const height = chartHeight(cpuDay.pods.length);
+const ticks = timeTicks(view);
+const gridTicks = ticks.filter(({ t: tt }) => tt > view.t0 && tt < view.t1);
+const panels = cpuDay.pods.map((pod, i) => ({
+  pod,
+  top: panelTop(i),
+  bottom: panelBottom(i),
+  path: seriesPath(cpuDay.cpu[i] ?? [], view, panelTop(i)),
+  sends: cpuDay.sends.filter(([p]) => p === pod).map(([, st]) => st),
+}));
+---
+
+<figure
+  class="cpu-day"
+  data-cpu-day
+  data-l-unit={t.unit}
+  data-l-last={t.lastSend}
+  data-l-none={t.noSend}
+>
+  <div class="cpu-day-tools">
+    <label class="cpu-day-toggle">
+      <input type="checkbox" data-windows-toggle />
+      {t.windows}
+    </label>
+    <button type="button" class="cpu-day-reset" data-reset hidden>{t.reset}</button>
+  </div>
+  <div class="cpu-day-plot">
+    <svg
+      viewBox={`0 0 ${W} ${height}`}
+      role="img"
+      aria-label={alt}
+      aria-describedby={`${id}-hint`}
+      tabindex="0"
+    >
+      <defs>
+        <clipPath id={`${id}-clip`}>
+          <rect x={PAD_L} y="0" width={PLOT_W} height={height}></rect>
+        </clipPath>
+      </defs>
+      {
+        panels.map(({ pod, top, bottom, path, sends }) => (
+          <g class="panel" data-panel={pod}>
+            <g class="grid-v" data-grid>
+              {gridTicks.map(({ t: tt }) => (
+                <line x1={xOf(tt, view)} x2={xOf(tt, view)} y1={top} y2={bottom} />
+              ))}
+            </g>
+            {[0.5, 1].map((v) => (
+              <>
+                <line class="grid-h" x1={PAD_L} x2={W - PAD_R} y1={yOf(v, top)} y2={yOf(v, top)} />
+                <text class="axis" x={PAD_L - 8} y={yOf(v, top) + 4} text-anchor="end">
+                  {v.toFixed(1)}
+                </text>
+              </>
+            ))}
+            <g clip-path={`url(#${id}-clip)`}>
+              <g class="windows" data-windows>
+                {sends.map((st) => (
+                  <rect
+                    x={xOf(st, view)}
+                    y={top}
+                    width={xOf(st + WINDOW, view) - xOf(st, view)}
+                    height={PANEL_H}
+                    data-t={st}
+                  />
+                ))}
+              </g>
+              <g class="area">
+                <path id={`${id}-${pod}`} d={path} data-series={pod} />
+              </g>
+              <g class="line">
+                <use href={`#${id}-${pod}`} />
+              </g>
+              <g class="sends">
+                {sends.map((st) => (
+                  <line
+                    x1={xOf(st, view)}
+                    x2={xOf(st, view)}
+                    y1={bottom + TICK_GAP}
+                    y2={bottom + TICK_GAP + TICK_H}
+                    data-t={st}
+                  />
+                ))}
+              </g>
+            </g>
+            <line class="base" x1={PAD_L} x2={W - PAD_R} y1={bottom} y2={bottom} />
+            <text class="label" x={PAD_L} y={top - 8}>
+              pod {pod}
+            </text>
+          </g>
+        ))
+      }
+      <g class="hours" data-hours>
+        {
+          ticks.map(({ t: tt, label }) => (
+            <text class="axis" x={xOf(tt, view)} y={height - 6} text-anchor="middle">
+              {label}
+            </text>
+          ))
+        }
+      </g>
+      <line
+        class="cursor is-hidden"
+        data-cursor
+        y1={panelTop(0) - 12}
+        y2={panelBottom(panels.length - 1) + TICK_GAP + TICK_H}></line>
+      <rect class="brush is-hidden" data-brush y="0" height={height}></rect>
+    </svg>
+    <div class="cpu-day-tip" data-tip role="status" hidden></div>
+  </div>
+  <p class="cpu-day-hint" id={`${id}-hint`} data-hint hidden>{t.hint}</p>
+</figure>
+
+<style is:global>
+  /* Global on purpose: the script re-creates axis labels, grid lines and
+     tooltip rows, which would miss Astro's scoped selectors. Everything is
+     namespaced under .cpu-day. */
+  .cpu-day {
+    /* Validated against --bg with the dataviz palette checker (dark band, CVD, 3:1). */
+    --cpu: #5c7cfa;
+    --send: #e8590c;
+    margin: 1.5rem 0;
+    font-family: var(--font-mono);
+  }
+
+  .cpu-day-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1.25rem;
+    min-height: 2rem;
+    margin-bottom: 0.25rem;
+    font-size: 0.8125rem;
+    color: var(--muted);
+  }
+
+  .cpu-day-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    cursor: pointer;
+  }
+
+  .cpu-day-toggle input {
+    /* Centred on the line box the 13px box hangs 3px under the baseline while
+       its top sits on the ascenders; 1px up puts it on the cap-height band. */
+    position: relative;
+    top: -1px;
+    margin: 0;
+    accent-color: var(--send);
+  }
+
+  .cpu-day-reset {
+    padding: 0.2em 0.6em;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .cpu-day-reset:hover {
+    border-color: var(--muted);
+  }
+
+  .cpu-day-plot {
+    position: relative;
+    overflow-x: auto;
+  }
+
+  .cpu-day svg {
+    display: block;
+    width: 100%;
+    min-width: 640px;
+    height: auto;
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* Chrome draws its own ring on a focused <svg> even without :focus-visible. */
+  .cpu-day svg:focus:not(:focus-visible),
+  .cpu-day svg.pointer-focus:focus-visible {
+    outline: none;
+  }
+
+  .cpu-day .grid-h,
+  .cpu-day .grid-v line {
+    stroke: var(--border);
+    stroke-width: 1;
+  }
+
+  .cpu-day .base {
+    stroke: var(--quote-border);
+    stroke-width: 1;
+  }
+
+  .cpu-day .axis {
+    font-size: 12px;
+    fill: var(--muted);
+  }
+
+  .cpu-day .label {
+    font-size: 13px;
+    fill: var(--text);
+  }
+
+  /* The same path is filled once and stroked once (through <use>); the
+     colours sit on the groups so the clone inherits them. */
+  .cpu-day .area {
+    fill: var(--cpu);
+    fill-opacity: 0.18;
+    stroke: none;
+  }
+
+  .cpu-day .line {
+    fill: none;
+    stroke: var(--cpu);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+  }
+
+  .cpu-day .sends line {
+    stroke: var(--send);
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+
+  .cpu-day .windows {
+    display: none;
+    fill: var(--send);
+    fill-opacity: 0.14;
+  }
+
+  .cpu-day:has([data-windows-toggle]:checked) .windows {
+    display: block;
+  }
+
+  .cpu-day .cursor {
+    stroke: var(--heading);
+    stroke-width: 1;
+    stroke-dasharray: 3 3;
+    pointer-events: none;
+  }
+
+  .cpu-day .brush {
+    fill: var(--heading);
+    fill-opacity: 0.12;
+    pointer-events: none;
+  }
+
+  .cpu-day .cursor.is-hidden,
+  .cpu-day .brush.is-hidden {
+    display: none;
+  }
+
+  .cpu-day-tip {
+    position: absolute;
+    z-index: 1;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+
+  .cpu-day-tip .tip-time {
+    color: var(--heading);
+  }
+
+  .cpu-day-tip .tip-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+  }
+
+  .cpu-day-tip .tip-row i {
+    width: 0.9em;
+    height: 0;
+    border-top: 2px solid var(--cpu);
+  }
+
+  .cpu-day-tip .tip-row span {
+    color: var(--muted);
+  }
+
+  .cpu-day-tip .tip-row.is-current span {
+    color: var(--text);
+  }
+
+  .cpu-day-tip .tip-row b {
+    margin-left: auto;
+    font-weight: 400;
+    color: var(--heading);
+  }
+
+  .cpu-day-tip .tip-send {
+    margin-top: 0.2em;
+    color: var(--muted);
+  }
+
+  .cpu-day-tip .tip-send::before {
+    content: '';
+    display: inline-block;
+    width: 2px;
+    height: 0.8em;
+    margin-right: 0.5em;
+    vertical-align: -0.1em;
+    background: var(--send);
+  }
+
+  .cpu-day-hint {
+    margin: 0.5rem 0 0;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+</style>
+
+<script>
+  import {
+    chartHeight,
+    clampView,
+    cpuDay,
+    formatTime,
+    FULL_VIEW,
+    isFullView,
+    lastSendBefore,
+    PAD_L,
+    panelBottom,
+    panelTop,
+    PLOT_W,
+    seriesPath,
+    snapMinute,
+    timeTicks,
+    tOf,
+    type View,
+    W,
+    WINDOW,
+    xOf,
+    valueAt,
+  } from './cpu-day-chart';
+
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+
+  function fill(template: string, values: Record<string, string>): string {
+    return template.replace(/\{(\w+)\}/g, (m, key: string) => values[key] ?? m);
+  }
+
+  /** SVG elements ignore the `hidden` attribute, so the crosshair and brush use a class. */
+  function setHidden(el: Element, hidden: boolean): void {
+    el.classList.toggle('is-hidden', hidden);
+  }
+
+  const inPlot = (x: number) => x >= PAD_L && x <= PAD_L + PLOT_W;
+
+  function init(fig: HTMLElement): void {
+    const plot = fig.querySelector<HTMLElement>('.cpu-day-plot');
+    const svg = fig.querySelector<SVGSVGElement>('svg');
+    const tip = fig.querySelector<HTMLElement>('[data-tip]');
+    const reset = fig.querySelector<HTMLButtonElement>('[data-reset]');
+    const hint = fig.querySelector<HTMLElement>('[data-hint]');
+    const cursor = svg?.querySelector<SVGLineElement>('[data-cursor]');
+    const brush = svg?.querySelector<SVGRectElement>('[data-brush]');
+    const hours = svg?.querySelector<SVGGElement>('[data-hours]');
+    if (!plot || !svg || !tip || !reset || !hint || !cursor || !brush || !hours) return;
+    const unit = fig.dataset.lUnit ?? '';
+    const lastTemplate = fig.dataset.lLast ?? '';
+    const noneTemplate = fig.dataset.lNone ?? '';
+    const height = chartHeight(cpuDay.pods.length);
+
+    const panels = cpuDay.pods.map((pod, index) => ({
+      pod,
+      index,
+      top: panelTop(index),
+      bottom: panelBottom(index),
+      values: cpuDay.cpu[index] ?? [],
+      path: svg.querySelector<SVGPathElement>(`[data-series="${pod}"]`),
+      grid: svg.querySelector<SVGGElement>(`[data-panel="${pod}"] [data-grid]`),
+      sends: [...svg.querySelectorAll<SVGLineElement>(`[data-panel="${pod}"] .sends line`)],
+      windows: [
+        ...svg.querySelectorAll<SVGRectElement>(`[data-panel="${pod}"] [data-windows] rect`),
+      ],
+    }));
+
+    let view: View = FULL_VIEW;
+    let cursorT: number | undefined;
+    let cursorPanel = 0;
+
+    const render = () => {
+      const ticks = timeTicks(view);
+      for (const panel of panels) {
+        panel.path?.setAttribute('d', seriesPath(panel.values, view, panel.top));
+        for (const line of panel.sends) {
+          const x = String(xOf(Number(line.dataset.t), view));
+          line.setAttribute('x1', x);
+          line.setAttribute('x2', x);
+        }
+        for (const rect of panel.windows) {
+          const st = Number(rect.dataset.t);
+          rect.setAttribute('x', String(xOf(st, view)));
+          rect.setAttribute('width', String(xOf(st + WINDOW, view) - xOf(st, view)));
+        }
+        panel.grid?.replaceChildren(
+          ...ticks
+            .filter(({ t }) => t > view.t0 && t < view.t1)
+            .map(({ t }) => {
+              const line = document.createElementNS(SVG_NS, 'line');
+              const x = String(xOf(t, view));
+              line.setAttribute('x1', x);
+              line.setAttribute('x2', x);
+              line.setAttribute('y1', String(panel.top));
+              line.setAttribute('y2', String(panel.bottom));
+              return line;
+            }),
+        );
+      }
+      hours.replaceChildren(
+        ...ticks.map(({ t, label }) => {
+          const text = document.createElementNS(SVG_NS, 'text');
+          text.setAttribute('class', 'axis');
+          text.setAttribute('x', String(xOf(t, view)));
+          text.setAttribute('y', String(height - 6));
+          text.setAttribute('text-anchor', 'middle');
+          text.textContent = label;
+          return text;
+        }),
+      );
+      reset.hidden = isFullView(view);
+    };
+
+    const hideCursor = () => {
+      cursorT = undefined;
+      setHidden(cursor, true);
+      tip.hidden = true;
+    };
+
+    /** Crosshair at the minute of `t`; the tooltip sits beside it, at `clientY` when given. */
+    const showCursor = (t: number, panelIndex: number, clientY?: number) => {
+      const at = snapMinute(t);
+      cursorT = at;
+      cursorPanel = panelIndex;
+      const x = xOf(at, view);
+      cursor.setAttribute('x1', String(x));
+      cursor.setAttribute('x2', String(x));
+      setHidden(cursor, false);
+
+      const time = document.createElement('div');
+      time.className = 'tip-time';
+      time.textContent = formatTime(at);
+      const rows = panels.map((panel) => {
+        const row = document.createElement('div');
+        row.className = panel.index === panelIndex ? 'tip-row is-current' : 'tip-row';
+        const key = document.createElement('i');
+        const name = document.createElement('span');
+        name.textContent = `pod ${panel.pod}`;
+        const value = document.createElement('b');
+        const v = valueAt(panel.values, at);
+        value.textContent = v === null ? '-' : `${v.toFixed(2)} ${unit}`;
+        row.append(key, name, value);
+        return row;
+      });
+      const send = document.createElement('div');
+      send.className = 'tip-send';
+      const current = panels[panelIndex] ?? panels[0];
+      if (current) {
+        // A produce inside the cursor's minute counts as "already sent".
+        const last = lastSendBefore(cpuDay.sends, current.pod, at + 59);
+        send.textContent =
+          last === undefined
+            ? fill(noneTemplate, { pod: current.pod })
+            : fill(lastTemplate, {
+                pod: current.pod,
+                time: formatTime(last),
+                delta: String(Math.max(0, at - last)),
+              });
+      }
+      tip.replaceChildren(time, ...rows, send);
+      tip.hidden = false;
+
+      const box = svg.getBoundingClientRect();
+      const scale = box.width / W;
+      const px = x * scale;
+      const py = clientY === undefined ? panelTop(panelIndex) * scale + 8 : clientY - box.top + 16;
+      const fitsRight = px + 14 + tip.offsetWidth < plot.scrollLeft + plot.clientWidth;
+      tip.style.left = `${fitsRight ? px + 14 : px - 14 - tip.offsetWidth}px`;
+      tip.style.top = `${Math.max(0, Math.min(py, height * scale - tip.offsetHeight))}px`;
+    };
+
+    const setView = (next: View) => {
+      view = next;
+      render();
+      if (cursorT !== undefined) {
+        if (cursorT < view.t0 || cursorT >= view.t1) hideCursor();
+        else showCursor(cursorT, cursorPanel);
+      }
+    };
+
+    const xOfEvent = (event: MouseEvent) => {
+      const box = svg.getBoundingClientRect();
+      return ((event.clientX - box.left) / box.width) * W;
+    };
+    const yOfEvent = (event: MouseEvent) => {
+      const box = svg.getBoundingClientRect();
+      return ((event.clientY - box.top) / box.height) * height;
+    };
+    const panelAt = (y: number) => {
+      let best = 0;
+      for (const panel of panels) {
+        if (y >= panel.top - 12) best = panel.index;
+      }
+      return best;
+    };
+    let dragStart: number | undefined;
+    let dragging = false;
+
+    svg.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0) return;
+      // Focus from a click or tap gets no ring; the next key press restores it.
+      svg.classList.add('pointer-focus');
+      const x = xOfEvent(event);
+      if (!inPlot(x)) return;
+      dragStart = x;
+      dragging = false;
+      svg.setPointerCapture(event.pointerId);
+    });
+
+    svg.addEventListener('pointermove', (event) => {
+      const x = xOfEvent(event);
+      if (dragStart !== undefined) {
+        if (!dragging && Math.abs(x - dragStart) < 4) return;
+        dragging = true;
+        const a = Math.max(PAD_L, Math.min(dragStart, x));
+        const b = Math.min(PAD_L + PLOT_W, Math.max(dragStart, x));
+        brush.setAttribute('x', String(a));
+        brush.setAttribute('width', String(b - a));
+        setHidden(brush, false);
+        setHidden(cursor, true);
+        tip.hidden = true;
+        return;
+      }
+      if (!inPlot(x)) {
+        hideCursor();
+        return;
+      }
+      showCursor(tOf(x, view), panelAt(yOfEvent(event)), event.clientY);
+    });
+
+    const endDrag = (event: PointerEvent) => {
+      if (dragStart === undefined) return;
+      const start = dragStart;
+      dragStart = undefined;
+      if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId);
+      setHidden(brush, true);
+      const x = Math.max(PAD_L, Math.min(PAD_L + PLOT_W, xOfEvent(event)));
+      if (!dragging) {
+        // A tap (touch) shows the crosshair where it landed.
+        showCursor(tOf(x, view), panelAt(yOfEvent(event)), event.clientY);
+        return;
+      }
+      dragging = false;
+      setView(clampView(tOf(start, view), tOf(x, view)));
+    };
+    svg.addEventListener('pointerup', endDrag);
+    svg.addEventListener('pointercancel', endDrag);
+    svg.addEventListener('pointerleave', () => {
+      if (dragStart === undefined) hideCursor();
+    });
+    svg.addEventListener('dblclick', () => setView(FULL_VIEW));
+    reset.addEventListener('click', () => {
+      setView(FULL_VIEW);
+      svg.focus();
+    });
+
+    svg.addEventListener('keydown', (event) => {
+      svg.classList.remove('pointer-focus');
+      const range = view.t1 - view.t0;
+      const step = event.shiftKey ? 600 : 60;
+      const at = cursorT ?? snapMinute(view.t0 + range / 2);
+      switch (event.key) {
+        case 'ArrowLeft':
+        case 'ArrowRight': {
+          const next = at + (event.key === 'ArrowLeft' ? -step : step);
+          if ((next < view.t0 || next >= view.t1) && !isFullView(view)) {
+            // Pan a zoomed view along with the cursor.
+            const shift = next < view.t0 ? next - view.t0 : next + 60 - view.t1;
+            setView(clampView(view.t0 + shift, view.t1 + shift));
+          }
+          showCursor(Math.max(view.t0, Math.min(view.t1 - 60, next)), cursorPanel);
+          break;
+        }
+        case 'ArrowUp':
+        case 'ArrowDown': {
+          const dir = event.key === 'ArrowUp' ? -1 : 1;
+          showCursor(at, Math.max(0, Math.min(panels.length - 1, cursorPanel + dir)));
+          break;
+        }
+        case 'Home':
+          showCursor(view.t0, cursorPanel);
+          break;
+        case 'End':
+          showCursor(view.t1 - 60, cursorPanel);
+          break;
+        case '+':
+        case '=':
+          setView(clampView(at - range / 4, at + range / 4));
+          showCursor(at, cursorPanel);
+          break;
+        case '-':
+          setView(clampView(at - range, at + range));
+          showCursor(at, cursorPanel);
+          break;
+        case 'Escape':
+          if (isFullView(view)) hideCursor();
+          else setView(FULL_VIEW);
+          break;
+        default:
+          return;
+      }
+      event.preventDefault();
+    });
+    svg.addEventListener('blur', hideCursor);
+
+    hint.hidden = false;
+  }
+
+  for (const fig of document.querySelectorAll<HTMLElement>('[data-cpu-day]')) init(fig);
+</script>

@@ -1,0 +1,40 @@
+---
+import { Image } from 'astro:assets';
+import avatar from '@/assets/avatar.jpg';
+import Nav from '@/components/Nav.astro';
+import { useTranslations, type Lang } from '@/i18n';
+import { homeUrl } from '@/lib/url';
+
+export interface Props {
+  lang: Lang;
+  currentPath?: string | undefined;
+  switchHref?: string | undefined;
+  /** The language switch falls back to the other home page (no translation). */
+  switchFallback?: boolean | undefined;
+}
+
+const { lang, currentPath, switchHref, switchFallback } = Astro.props;
+const t = useTranslations(lang);
+---
+
+<header class="site-header">
+  <a class="site-title" href={homeUrl(lang)}>
+    <Image
+      class="site-logo"
+      src={avatar}
+      alt=""
+      width={32}
+      height={32}
+      densities={[1, 2]}
+      loading="eager"
+      decoding="async"
+    />
+    <span class="link-text">{t.siteTitle}</span>
+  </a>
+  <Nav
+    lang={lang}
+    currentPath={currentPath}
+    switchHref={switchHref}
+    switchFallback={switchFallback}
+  />
+</header>

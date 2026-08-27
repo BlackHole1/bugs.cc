@@ -1,0 +1,42 @@
+---
+title: 在 vmware 里运行 qcow2 镜像
+description: 使用 qemu-img 把 qcow2 转化为 vmdk 格式
+date: 2018-01-23T09:12:31+08:00
+tags:
+  - virtualization
+translationKey: run-qcow2-image-in-vmware
+aliases:
+  - /zh/2018/01/23/run-qcow2-image-in-vmware/
+  - /zh/p/run-qcow2-image-in-vmware/
+  - /zh/posts/在vmware里运行qcow2镜像/
+---
+
+import YouTube from "../../../components/content/YouTube.astro";
+
+## 前言 \{#intro\}
+
+因为一些原因，需要在自己的笔记本上运行 qcow2 镜像。做个 OpenStack 平台吧，系统配置吃不消。想试一下能不能在 vmware 里直接跑 qcow2 镜像。网上的答案都是使用 `qemu-img` 工具进行转化，但是都后面也就没有说明了。于是自己折腾了一下，把过程记录一下。
+
+## 准备 \{#preparation\}
+
+需要先下载 `qemu-img` 工具，因为我是在 windows64 位上，所以就下载了 [win64 的镜像](https://qemu.weilnetz.de/w64/)，工具安装好后，最好在环境变量里的 `PATH` 里加入下一安装目录，方便后面的操作
+
+Vmware 虚拟机、qcow2 原始镜像包就不说了，必备的。
+
+## 流程 \{#steps\}
+
+首先使用 `qemu-img` 工具，把 qcow2 的镜像转化成 vmdk 格式的:
+
+```bash
+$ qemu-img convert -f qcow2 CentOS_7.2_x86_64_XD.qcow2 -O vmdk Centos.vmdk
+```
+
+然后会在根目录出现 Centos.vmdk 镜像，但是无法导入，因为没有 vmx 文件。导入到 Vmware 里会报错。
+
+所以，我们先使用 VMware 建立一个空的虚拟机，系统因你的 qcow2 进行选择，因为我是 Centos7。我这里选择的是 Centos 7 64 位系统。
+
+创建好了之后，进入 `Virtual Machines` 目录下的你刚刚创建虚拟机的目录，把 vmdk 文件删除，用之间 `qemu-img` 转化后的文件，覆盖过去，启动 Vmware 就成功了。
+
+下面是演示视频:
+
+<YouTube id="GE1dkDgRSPA" />

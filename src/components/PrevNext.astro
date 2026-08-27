@@ -1,0 +1,40 @@
+---
+import ArrowLeft from '@lucide/astro/icons/arrow-left';
+import ArrowRight from '@lucide/astro/icons/arrow-right';
+import { useTranslations, type Lang } from '@/i18n';
+
+/** Links to the previous (older) and next (newer) post of the same language. */
+export interface Props {
+  lang: Lang;
+  prev?: { href: string; title: string } | undefined;
+  next?: { href: string; title: string } | undefined;
+}
+
+const { lang, prev, next } = Astro.props;
+const t = useTranslations(lang);
+---
+
+{
+  (prev || next) && (
+    <nav class="prev-next" aria-label={t.post.postNav}>
+      {prev && (
+        <a class="prev-next-link prev" href={prev.href} rel="prev">
+          <ArrowLeft class="prev-next-icon" size={16} aria-hidden="true" focusable="false" />
+          <span>
+            <span class="prev-next-label">{t.post.previous}</span>
+            <span class="link-text">{prev.title}</span>
+          </span>
+        </a>
+      )}
+      {next && (
+        <a class="prev-next-link next" href={next.href} rel="next">
+          <span>
+            <span class="prev-next-label">{t.post.next}</span>
+            <span class="link-text">{next.title}</span>
+          </span>
+          <ArrowRight class="prev-next-icon" size={16} aria-hidden="true" focusable="false" />
+        </a>
+      )}
+    </nav>
+  )
+}

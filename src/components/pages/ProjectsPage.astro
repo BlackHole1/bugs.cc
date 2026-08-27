@@ -1,0 +1,134 @@
+---
+import Base from '@/layouts/Base.astro';
+import { useTranslations, type Lang } from '@/i18n';
+import { PROJECT_GROUPS } from '@/lib/projects';
+import { projectsIndexUrl } from '@/lib/url';
+
+export interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+---
+
+<Base
+  lang={lang}
+  title={t.projects.title}
+  description={t.projects.description}
+  path={projectsIndexUrl(lang)}
+  alternates={{ en: projectsIndexUrl('en'), zh: projectsIndexUrl('zh') }}
+>
+  <h1>{t.projects.title}</h1>
+  <p>{t.projects.intro}</p>
+  {
+    PROJECT_GROUPS.map((group, i) => (
+      <section class="project-group" aria-labelledby={`project-group-${i}`}>
+        <h2 id={`project-group-${i}`}>{group.title[lang]}</h2>
+        <ul class="project-grid">
+          {group.projects.map((project) => {
+            const Icon = project.icon;
+            return (
+              <li>
+                <a
+                  class="project-card"
+                  href={project.repo}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Icon class="project-icon" size={28} aria-hidden="true" focusable="false" />
+                  <span class="project-body">
+                    <span class="project-name link-text">
+                      {project.name}
+                      <span class="visually-hidden"> ({t.nav.externalLink})</span>
+                    </span>
+                    <span class="project-desc">{project.description[lang]}</span>
+                  </span>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    ))
+  }
+</Base>
+
+<style>
+  /*
+   * Card grid after antfu.me/projects: the whole card is the link, no border,
+   * transparent until hovered. Two columns fit the 880px column; one on
+   * narrow screens. The grid bleeds into the card padding so the card text
+   * lines up with the heading and the body text.
+   */
+  .project-group h2 {
+    margin: 2rem 0 0.25rem;
+  }
+
+  .project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 0.25rem 0.5rem;
+    list-style: none;
+    padding: 0;
+    margin: 0 -0.875rem;
+  }
+
+  .project-grid li {
+    margin: 0;
+  }
+
+  .project-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    height: 100%;
+    padding: 0.75rem 0.875rem;
+    border-radius: 6px;
+    color: inherit;
+    /* Name underlined on hover only (the `.link-text` bar sweeps in). */
+    --underline-rest: transparent;
+    background: transparent;
+    transition: background-color 0.15s ease-out;
+  }
+
+  .project-card:hover,
+  .project-card:focus-visible {
+    background: rgba(136, 136, 136, 0.15);
+  }
+
+  .project-icon {
+    flex: none;
+    opacity: 0.5;
+  }
+
+  .project-body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .project-name {
+    /* A flex item (block): shrink to the text so the bar stops with it. */
+    align-self: start;
+    color: var(--heading);
+    line-height: 1.3;
+  }
+
+  /* Keyboard focus shows the bar like hover (typography.css `a:hover .link-text`). */
+  .project-card:focus-visible .project-name {
+    background-position:
+      0 100%,
+      0 100%;
+    background-size:
+      100% 2px,
+      100% 1px;
+  }
+
+  .project-desc {
+    margin-top: 0.15em;
+    color: var(--muted);
+    font-size: 0.875rem;
+    line-height: 1.4;
+  }
+</style>

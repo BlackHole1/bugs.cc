@@ -1,0 +1,25 @@
+---
+import Base from '@/layouts/Base.astro';
+import { useTranslations } from '@/i18n';
+import { homeUrl } from '@/lib/url';
+
+const en = useTranslations('en');
+const zh = useTranslations('zh');
+// No `noindex`: unknown URLs are served with a 404 status (not indexed anyway),
+// the page is excluded from the sitemap, and a robots noindex would fail
+// Lighthouse's `is-crawlable` audit. The old Hugo 404 page had none either.
+// No canonical / og:url either: GitHub Pages serves this file for any unknown
+// URL, so it has no URL of its own (`/404/` does not exist).
+---
+
+<Base
+  lang="en"
+  title={en.notFound.title}
+  description={`${en.notFound.body} ${zh.notFound.body}`}
+  path="/404.html"
+  noCanonical
+>
+  <h1>{en.notFound.heading}</h1>
+  <p>{en.notFound.body} <a href={homeUrl('en')}>{en.notFound.backHome}</a></p>
+  <p lang={zh.htmlLang}>{zh.notFound.body} <a href={homeUrl('zh')}>{zh.notFound.backHome}</a></p>
+</Base>

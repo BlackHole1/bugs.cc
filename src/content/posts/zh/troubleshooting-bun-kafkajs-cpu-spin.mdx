@@ -1,0 +1,273 @@
+---
+title: "Bun 服务周期性 CPU 100% 排查"
+date: 2026-08-25T15:00:00+08:00
+tags:
+  - bun
+  - kafka
+translationKey: troubleshooting-bun-kafkajs-cpu-spin
+---
+
+import CpuDayChart from '../../../components/content/CpuDayChart.astro';
+
+前几天线上遇到一个挺有意思的问题：一个用 Bun 写的服务，三个 pod 的 CPU 会周期性打满一个核，每次正好 10 分钟，然后自己掉下去。服务本身没报错，接口正常，健康检查也从来没失败过，就是 CPU 监控很难看。
+
+排查完发现是两个单独看都不严重的问题叠在一起，中间还踩上了内核版本和 Bun 小版本的坑，记录一下。
+
+**环境：**
+
+- Bun 1.3.14（Dockerfile 里写死的）
+- kafkajs 2.2.4
+- Kubernetes 节点内核 5.10.134
+
+复现仓库: [bun-epoll-timer-spin-repro]，后面会用到。
+
+## 现象 \{#symptom\}
+
+<CpuDayChart image="/images/troubleshooting-bun-kafkajs-cpu-spin/cpu-day.png" alt="某一天三个 pod 的分钟级 CPU" />
+
+这是某一天三个 pod 的分钟级 CPU。图里下面的竖线是每一次 Kafka 发送，后面会说到。几个特征很明显:
+
+- CPU 顶在 0.99 核，从来没有超过 1.0，说明只有一条线程在跑满。
+- 每一段都是 600 秒的整数倍，起来和落下去都在一个采样间隔内，不是慢慢爬上去的。
+- 三个 pod 经常同时开始这段占用。
+- 凌晨基本没有，看着跟业务量有关。
+- 占用上来的时候，用户态大概 2/3，内核态大概 1/3，网络流量、fd 数、内存跟平时几乎一样。
+
+最后一条其实已经能排除不少东西: 不是在处理大包，也不是纯 JS 计算（那样内核态不会这么高），更像是一个带着系统调用的空转。
+
+我一开始也怀疑过是 worker 在某个任务上死循环，但是 24 小时内所有跟任务超时、重试、心跳相关的日志全是 0 条，忙的时候和闲的时候日志量也几乎一样。也不是哪次部署带进来的，指标能看到的 16 天里天天都有。
+
+## 先在 pod 里读 /proc \{#proc-in-pod\}
+
+线上不能随便动，容器里也没有 perf，所以我直接用 `kubectl exec` 读 `/proc`，这个是完全只读的。
+
+先对 `/proc/<pid>/task/*/stat` 里每条线程的 utime / stime 做 3 秒差分，找占 CPU 的线程。CPU 打满时的结果（100 ticks 等于一个核）:
+
+```text
+tid   comm        d_utime  d_stime
+8     bun         197      100
+95    HTTP        0        0
+9     bun         0        0
+16    Bun         0        0
+15    Bun         0        0
+14    Bun         0        0
+13    Bun         0        0
+12    HeapHelper  0        0
+11    HeapHelper  0        0
+10    HeapHelper  0        0
+```
+
+占 CPU 的就是主线程（tid 和 pid 相同的那条）。然后高频去读它的 `/proc/<pid>/task/<tid>/syscall`。这个文件第一列是线程当前卡在哪个 syscall 号上[^syscall-numbers]，后面跟着 6 个参数；线程在用户态时，写的是 `running`:
+
+```sh
+i=0
+while [ $i -lt 3000 ]; do
+  cat /proc/8/task/8/syscall >> /tmp/sc.txt
+  i=$((i+1))
+done
+# 停在哪个 syscall 上
+awk '{print $1}' /tmp/sc.txt | sort | uniq -c | sort -rn
+# epoll_pwait 的 timeout 参数（第 4 个参数，也就是第 5 列）
+awk '$1 == 281 {print $5}' /tmp/sc.txt | sort | uniq -c | sort -rn
+```
+
+空闲时的输出:
+
+```text
+   2969 281
+     29 running
+      2 202
+
+   1850 0x63
+    325 0x53
+    201 0x56
+    192 0x57
+     90 0x5d
+```
+
+3000 次采样里 2969 次停在 syscall 281，也就是 `epoll_pwait`，timeout 是几十到几百毫秒，很正常。但是有个细节: 从头到尾没有出现过 441（`epoll_pwait2`）。这个后面会用到。
+
+CPU 打满时的输出:
+
+```text
+   2979 running
+     21 281
+
+     21 0x1
+```
+
+几乎全在用户态，偶尔停在 `epoll_pwait` 上，而且 timeout 是 1ms。
+
+再看 `/proc/<pid>/net/tcp`，空闲时只有 4 条连接（Redis、Postgres），CPU 打满时多出了两条到 9095 端口的连接，那是 Kafka broker。
+
+## 每次都是 Kafka 发送 \{#kafka-send\}
+
+这个服务用 kafkajs 往 Kafka 发计量事件。于是我把 48 小时内所有会触发 Kafka 发送的日志拉出来，和 115 段 CPU 占用对了一下时间:
+
+- 每段占用的起点，距离最近一次发送在 -13 秒到 +1 秒之内（采样误差内）
+- 每段占用的终点，都是这段里最后一次发送再加 600 秒到 611 秒
+- 反过来，373 次发送全部落在某段占用里，一次不漏
+
+600 秒是 Kafka broker `connections.max.idle.ms` 的默认值: 连接空闲 10 分钟后，broker 会主动把连接关掉。所以这段 CPU 占用的时长，就是一条 Kafka 连接从建立到被掐掉的时间。三个 pod 同时打满，是因为同一个用户的一批任务被分到了三台机器上，几秒内各发了一条消息。
+
+## kafkajs 里的 1ms setTimeout \{#kafkajs-settimeout\}
+
+看 kafkajs 2.2.4 的 `src/network/requestQueue/index.js`:
+
+```js
+checkPendingRequests() {
+  while (this.pending.length > 0 && this.canSendSocketRequestImmediately()) {
+    // ...
+  }
+  this.scheduleCheckPendingRequests() // [!code highlight]
+}
+
+scheduleCheckPendingRequests() {
+  let scheduleAt = this.throttledUntil - Date.now() // [!code highlight]
+  if (!this.throttleCheckTimeoutId) {
+    if (this.pending.length > 0) {
+      scheduleAt = scheduleAt > 0 ? scheduleAt : CHECK_PENDING_REQUESTS_INTERVAL
+    }
+    this.throttleCheckTimeoutId = setTimeout(() => { // [!code highlight:4]
+      this.throttleCheckTimeoutId = null
+      this.checkPendingRequests()
+    }, scheduleAt)
+  }
+}
+```
+
+`checkPendingRequests` 不管怎么样都会再调一次 `scheduleCheckPendingRequests`。后者在 pending 为空、也没有限流的情况下，依然会 `setTimeout` 一下，回调里再调 `checkPendingRequests`。而 `throttledUntil` 的初始值是 -1，所以 `scheduleAt` 是一个很大的负数。Node 和 Bun 都会把负数延迟当成 1ms 来处理。
+
+于是从连接收到第一个响应开始，每条 broker 连接上就挂着一个 1ms 的 `setTimeout` 循环，直到 `destroy()` 被调用。而 `destroy()` 只在连接断开时才会调。
+
+这个问题上游早有人报过（[kafkajs#1556]、[kafkajs#1704]），修复的 PR 也早就有了（[kafkajs#1572]），但是一直没合进去。我们仓库里之前也为它打过一个 patch，不过只是把负数兜底成了 `Math.max(1, scheduleAt || 1)`，等于把这个 1ms 的循环留下来了，并没有消掉。
+
+但是说到底，一个 1ms 的 `setTimeout` 循环，在 Node 上也就是 2% 左右的 CPU，怎么会打满一个核？
+
+## 为什么 Bun 会打满一个核 \{#why-bun-spins\}
+
+答案在 Bun 的事件循环里。Bun 1.3.14 的 `packages/bun-usockets/src/eventing/epoll_kqueue.c`:
+
+```c
+// [!code word:tv_nsec / 1000000]
+static int bun_epoll_pwait2(int epfd, struct epoll_event *events, int maxevents, const struct timespec *timeout) {
+    if (has_epoll_pwait2 != 0) {
+        // ... sys_epoll_pwait2(...)
+    }
+
+    int timeoutMs = -1;
+    if (timeout) {
+        timeoutMs = timeout->tv_sec * 1000 + timeout->tv_nsec / 1000000;
+    }
+
+    do {
+        ret = epoll_pwait(epfd, events, maxevents, timeoutMs, &mask);
+    } while (IS_EINTR(ret));
+
+    return ret;
+}
+```
+
+Bun 优先用 `epoll_pwait2`，它接受纳秒级的 `timespec`。但是 `epoll_pwait2` 是 Linux 5.11 才有的，Bun 会检查内核版本，低于 5.11 就退回 `epoll_pwait`，超时按毫秒传。问题就在 `tv_nsec / 1000000` 这一行: 向下取整。
+
+一个 1ms 的定时器，在回调里又 `setTimeout` 了自己。事件循环算下一次要等多久，剩余 0.9x ms，取整之后变成 0，`epoll_pwait(…, 0)` 立刻返回，再算一次还是 0，就这样一直转到定时器到期。然后回调再设一个新的 1ms 定时器，接着转。
+
+这也解释了前面 `/proc` 里看到的现象: 主线程从来没调用过 `epoll_pwait2`，因为我们的节点内核是 5.10.134。CPU 打满时采到的那些 `0x1`，是每一轮里唯一真正会睡的一次调用。timeout 为 0 的那些调用立刻就返回了，几乎采不到。
+
+这段向下取整的代码 1.3.11 里就有了，但是只有 1.3.14 会出问题。差别在 1.3.14 的 [bun#29806]: 它把 `timespec.now()` 底层的时钟，从 Linux 上的 `CLOCK_MONOTONIC_COARSE` 换成了纳秒级的 `hw_timer`（rdtsc）。旧时钟是毫秒级的 jiffy 粒度，1ms 定时器的剩余时间要么是整 1ms，要么已经到期，不会出现 0.9ms 这种值，所以取整也取不出 0。换成纳秒时钟之后，这个早就存在的取整问题才第一次被撞上。
+
+Bun 上游在 [bun#34780] 修掉了这个问题（改成向上取整），但只进了 1.4.0，1.3.14 之后再没有发过 1.3.x。所以受影响的就只有 1.3.14 这一个版本，而且还得跑在没有 `epoll_pwait2` 的内核上。
+
+## 本地复现 \{#local-repro\}
+
+复现这个问题不需要真去找一台 5.10 内核的机器。Docker 的 seccomp 可以让某个 syscall 直接返回 ENOSYS。Bun 检测到 `epoll_pwait2` 返回 ENOSYS 时，会走同一条退回 `epoll_pwait` 的逻辑:
+
+```json
+{
+  "defaultAction": "SCMP_ACT_ALLOW",
+  "syscalls": [
+    { "names": ["epoll_pwait2"], "action": "SCMP_ACT_ERRNO", "errnoRet": 38 }
+  ]
+}
+```
+
+我把整个复现放在了 [bun-epoll-timer-spin-repro] 里，只依赖 Docker:
+
+```sh
+git clone https://github.com/BlackHole1/bun-epoll-timer-spin-repro.git
+cd bun-epoll-timer-spin-repro
+./run.sh
+```
+
+它会在 Bun 1.3.13 / 1.3.14 / 1.4.0 三个镜像里，分别在有和没有 `epoll_pwait2` 的情况下跑三种定时器: 直接 `setTimeout(fn, 1)`、直接 `setTimeout(fn, 10)`，以及直接构造 kafkajs 的 `RequestQueue` 并调一次 `checkPendingRequests()`（不需要真的连 Kafka）。每个 case 跑 5 秒，统计定时器触发频率和 CPU:
+
+```text {11,13}
+bun       epoll_pwait2   mode        iter/s   user%    sys%
+1.3.13    available      timer1         330     1.2     1.4
+1.3.13    available      timer10         84     1.4     0.8
+1.3.13    available      kafkajs        327     2.2     0.9
+1.3.13    blocked        timer1         327     1.7     1.1
+1.3.13    blocked        timer10         84     1.5     1.2
+1.3.13    blocked        kafkajs        321     2.3     1.5
+1.3.14    available      timer1         336     1.2     0.7
+1.3.14    available      timer10         85       1     0.2
+1.3.14    available      kafkajs        335     2.3     0.7
+1.3.14    blocked        timer1         996      56    43.5
+1.3.14    blocked        timer10         92       2     0.7
+1.3.14    blocked        kafkajs        993    62.9    36.6
+1.4.0     available      timer1         334     1.3     1.6
+1.4.0     available      timer10         86     0.8     0.4
+1.4.0     available      kafkajs        337       2     1.3
+1.4.0     blocked        timer1         338       1     1.1
+1.4.0     blocked        timer10         85     0.7     0.5
+1.4.0     blocked        kafkajs        334     1.3     1.1
+```
+
+只有 1.3.14 加上 blocked 那两行会打满一个核。所以其实跟 kafkajs 没什么关系，任何一条 1ms 的 `setTimeout` 循环在这个组合下都一样。
+
+strace 看到的就是 2 秒内 14.8 万次 `epoll_pwait(4, [], 1024, 0, [], 8) = 0 <0.000001>`，每次间隔 6 到 7 µs。这就是用户态 2/3、内核态 1/3 的来源。
+
+## 修复 \{#fix\}
+
+改 kafkajs 的 patch: pending 为空且没有限流时，直接不设定时器，其余逻辑不动。
+
+```diff lang="js"
+       if (this.pending.length > 0) {
+         scheduleAt = scheduleAt > 0 ? scheduleAt : CHECK_PENDING_REQUESTS_INTERVAL
+       }
+-      // Prevent negative or invalid delays
+-      scheduleAt = Math.max(1, scheduleAt || 1)
++      if (scheduleAt <= 0) {
++        return
++      }
+       this.throttleCheckTimeoutId = setTimeout(() => {
+```
+
+复现环境里 CPU 从 99% 降到 0.2%。
+
+另外顺手做了两件事:
+
+- 把 kafkajs 从 `^2.2.4` 改成写死 `2.2.4`。Bun 的 `patchedDependencies` 是按 `kafkajs@2.2.4` 这个 key 匹配的，一旦 lockfile 解析到别的版本，Bun 会静默跳过补丁，`bun install` 退出码还是 0，一个字都不提示。
+- 加了一个直接引用 `kafkajs/src/network/requestQueue/index.js` 的测试，断言无 pending 时不会 `setTimeout`。以后 patch 丢了，测试会先挂。
+
+## 最后 \{#conclusion\}
+
+线上已经打上这个 patch，那段周期性打满一个核的曲线没了。等 Bun 升到 1.4.0 之后，就算 patch 丢了，这个组合也不会再出现。
+
+[^syscall-numbers]: syscall 号是跟架构走的。x86_64 可以去内核源码的 [syscall_64.tbl] 里查，本机装了 auditd 的话也可以直接 `ausyscall x86_64 281`。后面会碰到这几个:
+
+    ```text
+    202  futex
+    281  epoll_pwait
+    441  epoll_pwait2
+    ```
+
+    arm64 上 `epoll_pwait` 是 22。不过 `epoll_pwait2` 这种近几年才加进来的，所有架构都是 441。
+
+[syscall_64.tbl]: https://github.com/torvalds/linux/blob/master/arch/x86/entry/syscalls/syscall_64.tbl
+[bun-epoll-timer-spin-repro]: https://github.com/BlackHole1/bun-epoll-timer-spin-repro
+[kafkajs#1556]: https://github.com/tulios/kafkajs/issues/1556
+[kafkajs#1704]: https://github.com/tulios/kafkajs/issues/1704
+[kafkajs#1572]: https://github.com/tulios/kafkajs/pull/1572
+[bun#34780]: https://github.com/oven-sh/bun/pull/34780
+[bun#29806]: https://github.com/oven-sh/bun/pull/29806

@@ -1,0 +1,54 @@
+---
+/**
+ * Standalone redirect page for old URLs (SPEC 5.3): meta refresh, canonical,
+ * noindex and a visible link so the page still works without meta refresh.
+ */
+import { useTranslations, type Lang } from '@/i18n';
+import { SITE } from '@/lib/site';
+import { absoluteUrl } from '@/lib/url';
+
+export interface Props {
+  /** Site path of the target, e.g. `/zh/posts/x/`. */
+  to: string;
+  lang: Lang;
+}
+
+const { to, lang } = Astro.props;
+const t = useTranslations(lang);
+const target = absoluteUrl(to, Astro.site ?? SITE.url);
+// `target` is percent-encoded (Chinese slugs) and stays so in href, canonical
+// and the refresh; the title and the link text show the readable form.
+const shown = decodeURI(target);
+---
+
+<!doctype html>
+<html lang={t.htmlLang} dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{t.redirect.title(shown)}</title>
+    <meta name="robots" content="noindex" />
+    <meta name="color-scheme" content="dark" />
+    <meta http-equiv="refresh" content={`0;url=${target}`} />
+    <link rel="canonical" href={target} />
+    <style>
+      html {
+        background: #101010;
+        color: #d4d4d4;
+        font-family: Verdana, Geneva, 'DejaVu Sans', sans-serif;
+        line-height: 1.6;
+      }
+      body {
+        max-width: 880px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      a {
+        color: #6fbf9a;
+      }
+    </style>
+  </head>
+  <body>
+    <p>{t.redirect.body} <a href={target}>{shown}</a></p>
+  </body>
+</html>

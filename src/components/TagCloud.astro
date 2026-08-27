@@ -1,0 +1,63 @@
+---
+/**
+ * `#tag` links (lowercase), optionally with post counts. The caller decides
+ * the order (by name below a post list, by count on the tags index).
+ */
+import { useTranslations, type Lang } from '@/i18n';
+import type { TagInfo } from '@/lib/tags';
+import { tagUrl } from '@/lib/url';
+
+export interface Props {
+  tags: TagInfo[];
+  lang: Lang;
+  /** Show the number of posts next to each tag. */
+  showCount?: boolean | undefined;
+  /** Accessible name of the list. Defaults to "All tags". */
+  label?: string | undefined;
+}
+
+const { tags, lang, showCount = false, label } = Astro.props;
+const t = useTranslations(lang);
+---
+
+<ul class="tag-cloud" aria-label={label ?? t.tags.cloudLabel}>
+  {
+    tags.map((tag) => (
+      <li>
+        <a href={tagUrl(lang, tag.tag)}>#{tag.tag}</a>
+        {showCount && <span class="count">{t.tags.postCount(tag.count)}</span>}
+      </li>
+    ))
+  }
+</ul>
+
+<style>
+  .tag-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 12px;
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.5rem;
+  }
+
+  .tag-cloud li {
+    margin: 0;
+  }
+
+  .tag-cloud a {
+    display: inline-block;
+    padding: 0.5em 0;
+    line-height: 1.6;
+  }
+
+  .tag-cloud a:visited {
+    color: var(--link-visited);
+  }
+
+  .count {
+    color: var(--muted);
+    font-size: 0.875rem;
+    margin-left: 0.35em;
+  }
+</style>

@@ -1,0 +1,64 @@
+---
+import { DEFAULT_LANG, isLang } from '@/i18n/types';
+import { useTranslations } from '@/i18n';
+
+/**
+ * Privacy-enhanced YouTube embed used from .mdx posts.
+ * Renders a lazy-loaded youtube-nocookie iframe inside a 16:9 box, with an accessible title
+ * and a plain link fallback for readers who block third-party frames.
+ * UI strings follow the page language (`Astro.currentLocale`).
+ */
+interface Props {
+  /** YouTube video id, e.g. "GE1dkDgRSPA" */
+  id: string;
+  /** Accessible name of the frame */
+  title?: string;
+}
+
+const locale = Astro.currentLocale ?? DEFAULT_LANG;
+const t = useTranslations(isLang(locale) ? locale : DEFAULT_LANG);
+const { id, title: givenTitle } = Astro.props;
+const title = givenTitle ?? t.content.youtubeVideo;
+const caption = givenTitle ? t.content.onYouTube(givenTitle) : t.content.watchOnYouTube;
+const safeId = encodeURIComponent(id);
+const embedSrc = `https://www.youtube-nocookie.com/embed/${safeId}`;
+const watchUrl = `https://www.youtube.com/watch?v=${safeId}`;
+---
+
+<figure class="youtube">
+  <div class="youtube-frame">
+    <iframe
+      src={embedSrc}
+      title={title}
+      loading="lazy"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      allowfullscreen
+      referrerpolicy="strict-origin-when-cross-origin"></iframe>
+  </div>
+  <figcaption>
+    <a href={watchUrl} target="_blank" rel="noopener noreferrer">{caption}</a>
+  </figcaption>
+</figure>
+
+<style>
+  .youtube {
+    margin: 1.5rem 0;
+  }
+  .youtube-frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #000;
+  }
+  .youtube-frame iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+  figcaption {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+  }
+</style>

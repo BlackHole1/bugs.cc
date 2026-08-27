@@ -1,0 +1,271 @@
+---
+title: "Troubleshooting Periodic 100% CPU on a Bun Service"
+date: 2026-08-25T15:00:00+08:00
+tags:
+  - bun
+  - kafka
+translationKey: troubleshooting-bun-kafkajs-cpu-spin
+---
+
+import CpuDayChart from '../../../components/content/CpuDayChart.astro';
+
+A few days ago we hit a fairly interesting production issue. A Bun service was periodically pegging one CPU core across three pods, for exactly 10 minutes each time, then dropping back on its own. The service itself was fine: requests worked, health checks never failed. The CPU graph just looked awful.
+
+It turned out to be two problems that are each pretty mild on their own, stacked on a specific kernel version and a specific Bun patch release. Writing it down.
+
+**Environment:**
+
+- Bun 1.3.14 (pinned in the Dockerfile)
+- kafkajs 2.2.4
+- Kubernetes node kernel 5.10.134
+
+Repro: [bun-epoll-timer-spin-repro]. I'll come back to this later.
+
+## The symptom
+
+<CpuDayChart image="/images/troubleshooting-bun-kafkajs-cpu-spin/cpu-day.png" alt="Minute-level CPU of three pods on one day" />
+
+Minute-level CPU for the three pods on one day. The vertical lines at the bottom are Kafka produces; more on that later. A few things stand out:
+
+- The plateau sits at 0.99 cores and never goes above 1.0. Only one thread is busy.
+- Every stretch is a multiple of 600 seconds. It jumps up and down within a single scrape interval, not a gradual climb.
+- All three pods often start the stretch together.
+- Almost nothing overnight. It tracks traffic.
+- During a spike, user is about 2/3 and sys about 1/3. Network, fd count, and memory look the same as a quiet period.
+
+That last point already rules a lot out. We weren't chewing through large payloads, and it wasn't pure JS compute (sys wouldn't be that high). It looked like a busy loop that still makes syscalls.
+
+I first wondered if a worker was stuck in a tight loop on some job. But over 24 hours, every log related to job timeouts, retries, and heartbeats was zero. Busy periods and idle periods produced almost the same amount of logs. It also wasn't introduced by a deploy: every one of the 16 days we have metrics for looks the same.
+
+## Reading /proc in the pod
+
+Can't poke production casually, and there's no perf in the container, so I `kubectl exec`'d and read `/proc`. That's fully read-only.
+
+Diff utime/stime of every thread in `/proc/<pid>/task/*/stat` over 3 seconds and find the hot one. During a spike (100 ticks = one core):
+
+```text
+tid   comm        d_utime  d_stime
+8     bun         197      100
+95    HTTP        0        0
+9     bun         0        0
+16    Bun         0        0
+15    Bun         0        0
+14    Bun         0        0
+13    Bun         0        0
+12    HeapHelper  0        0
+11    HeapHelper  0        0
+10    HeapHelper  0        0
+```
+
+The hot thread is the main thread (the one where tid equals pid). Then I sampled `/proc/<pid>/task/<tid>/syscall` as fast as I could. The first column is the syscall number the thread is currently in[^syscall-numbers], followed by six arguments. When the thread is in userspace, the file says `running`:
+
+```sh
+i=0
+while [ $i -lt 3000 ]; do
+  cat /proc/8/task/8/syscall >> /tmp/sc.txt
+  i=$((i+1))
+done
+# which syscall it is blocked on
+awk '{print $1}' /tmp/sc.txt | sort | uniq -c | sort -rn
+# epoll_pwait timeout (4th argument, i.e. column 5)
+awk '$1 == 281 {print $5}' /tmp/sc.txt | sort | uniq -c | sort -rn
+```
+
+Idle:
+
+```text
+   2969 281
+     29 running
+      2 202
+
+   1850 0x63
+    325 0x53
+    201 0x56
+    192 0x57
+     90 0x5d
+```
+
+2969 of 3000 samples were sitting in syscall 281, `epoll_pwait`, with a timeout of tens to hundreds of milliseconds. Normal. One detail: 441 (`epoll_pwait2`) never showed up at all. That matters later.
+
+During a spike:
+
+```text
+   2979 running
+     21 281
+
+     21 0x1
+```
+
+Almost entirely in userspace. The rare times it was in `epoll_pwait`, the timeout was 1ms.
+
+Then `/proc/<pid>/net/tcp`: 4 connections when idle (Redis, Postgres). During a spike, two extra connections to port 9095, the Kafka broker.
+
+## Every spike was a Kafka send
+
+The service publishes metering events with kafkajs. I pulled 48 hours of logs that trigger a Kafka produce and lined them up against 115 CPU stretches:
+
+- Every stretch starts within -13s to +1s of the nearest produce (within scrape jitter)
+- Every stretch ends 600s to 611s after the last produce in that stretch
+- The other way around: all 373 produces fall inside some stretch. None missed.
+
+600s is the default `connections.max.idle.ms` on a Kafka broker: the broker closes a connection after 10 minutes idle. So the length of a CPU stretch is the lifetime of one Kafka connection. The three pods spiked together because one user's batch of jobs landed on three machines, each of which sent a message within a few seconds.
+
+## The 1ms setTimeout in kafkajs
+
+kafkajs 2.2.4, `src/network/requestQueue/index.js`:
+
+```js
+checkPendingRequests() {
+  while (this.pending.length > 0 && this.canSendSocketRequestImmediately()) {
+    // ...
+  }
+  this.scheduleCheckPendingRequests() // [!code highlight]
+}
+
+scheduleCheckPendingRequests() {
+  let scheduleAt = this.throttledUntil - Date.now() // [!code highlight]
+  if (!this.throttleCheckTimeoutId) {
+    if (this.pending.length > 0) {
+      scheduleAt = scheduleAt > 0 ? scheduleAt : CHECK_PENDING_REQUESTS_INTERVAL
+    }
+    this.throttleCheckTimeoutId = setTimeout(() => { // [!code highlight:4]
+      this.throttleCheckTimeoutId = null
+      this.checkPendingRequests()
+    }, scheduleAt)
+  }
+}
+```
+
+`checkPendingRequests` always calls `scheduleCheckPendingRequests`. When pending is empty and there's no throttle, that still arms a `setTimeout`, whose callback calls `checkPendingRequests` again. `throttledUntil` starts at -1, so `scheduleAt` is a huge negative number. Both Node and Bun treat a negative delay as 1ms.
+
+So from the first response on a broker connection, that connection runs a 1ms `setTimeout` loop until `destroy()` is called. And `destroy()` only runs when the connection drops.
+
+This has been reported upstream ([kafkajs#1556], [kafkajs#1704]). A fix PR has been sitting around for a long time ([kafkajs#1572]) and never landed. We had already patched it in our repo, but the patch only clamped the negative value with `Math.max(1, scheduleAt || 1)`, which keeps the 1ms loop around instead of killing it.
+
+Still: a 1ms `setTimeout` loop is maybe 2% CPU on Node. Why does it peg a whole core?
+
+## Why Bun pegs a whole core
+
+The event loop. Bun 1.3.14, `packages/bun-usockets/src/eventing/epoll_kqueue.c`:
+
+```c
+// [!code word:tv_nsec / 1000000]
+static int bun_epoll_pwait2(int epfd, struct epoll_event *events, int maxevents, const struct timespec *timeout) {
+    if (has_epoll_pwait2 != 0) {
+        // ... sys_epoll_pwait2(...)
+    }
+
+    int timeoutMs = -1;
+    if (timeout) {
+        timeoutMs = timeout->tv_sec * 1000 + timeout->tv_nsec / 1000000;
+    }
+
+    do {
+        ret = epoll_pwait(epfd, events, maxevents, timeoutMs, &mask);
+    } while (IS_EINTR(ret));
+
+    return ret;
+}
+```
+
+Bun prefers `epoll_pwait2`, which takes a nanosecond `timespec`. `epoll_pwait2` only exists since Linux 5.11; Bun checks the kernel version and falls back to `epoll_pwait` with a millisecond timeout below that. The bug is `tv_nsec / 1000000`: it truncates toward zero.
+
+A 1ms timer re-arms itself in its own callback. The event loop computes how long to wait next: 0.9x ms left, truncated to 0, `epoll_pwait(…, 0)` returns immediately, compute again, still 0, spin until the timer fires. Then the callback arms a new 1ms timer, and around we go.
+
+That matches `/proc`: the main thread never called `epoll_pwait2`, because our nodes are 5.10.134. The `0x1` samples during a spike are the one call per round that actually sleeps. The timeout-0 calls return immediately, so you almost never catch them.
+
+The truncation has been there since 1.3.11. Only 1.3.14 blows up. The difference is [bun#29806] in 1.3.14: `timespec.now()` switched from `CLOCK_MONOTONIC_COARSE` on Linux to a nanosecond `hw_timer` (rdtsc). The old clock is jiffy-granularity, milliseconds. Remaining time on a 1ms timer is either a full 1ms or already due. You never see 0.9ms, so truncation never produces 0. After the nanosecond clock, that old truncation finally got hit.
+
+Upstream fixed it in [bun#34780] (round up instead). That only shipped in 1.4.0; there were no more 1.3.x releases after 1.3.14. So the only affected version is 1.3.14, and only on kernels without `epoll_pwait2`.
+
+## Reproducing it locally
+
+You don't need a 5.10 machine. Docker seccomp can make a syscall return ENOSYS. When Bun sees `epoll_pwait2` return ENOSYS, it takes the same fallback path:
+
+```json
+{
+  "defaultAction": "SCMP_ACT_ALLOW",
+  "syscalls": [
+    { "names": ["epoll_pwait2"], "action": "SCMP_ACT_ERRNO", "errnoRet": 38 }
+  ]
+}
+```
+
+The full repro is in [bun-epoll-timer-spin-repro], Docker only:
+
+```sh
+git clone https://github.com/BlackHole1/bun-epoll-timer-spin-repro.git
+cd bun-epoll-timer-spin-repro
+./run.sh
+```
+
+It runs Bun 1.3.13 / 1.3.14 / 1.4.0, with and without `epoll_pwait2`, on three timer setups: a plain `setTimeout(fn, 1)`, a plain `setTimeout(fn, 10)`, and constructing kafkajs's `RequestQueue` then calling `checkPendingRequests()` once (no real Kafka). Each case runs 5 seconds and reports timer fire rate plus CPU:
+
+```text {11,13}
+bun       epoll_pwait2   mode        iter/s   user%    sys%
+1.3.13    available      timer1         330     1.2     1.4
+1.3.13    available      timer10         84     1.4     0.8
+1.3.13    available      kafkajs        327     2.2     0.9
+1.3.13    blocked        timer1         327     1.7     1.1
+1.3.13    blocked        timer10         84     1.5     1.2
+1.3.13    blocked        kafkajs        321     2.3     1.5
+1.3.14    available      timer1         336     1.2     0.7
+1.3.14    available      timer10         85       1     0.2
+1.3.14    available      kafkajs        335     2.3     0.7
+1.3.14    blocked        timer1         996      56    43.5
+1.3.14    blocked        timer10         92       2     0.7
+1.3.14    blocked        kafkajs        993    62.9    36.6
+1.4.0     available      timer1         334     1.3     1.6
+1.4.0     available      timer10         86     0.8     0.4
+1.4.0     available      kafkajs        337       2     1.3
+1.4.0     blocked        timer1         338       1     1.1
+1.4.0     blocked        timer10         85     0.7     0.5
+1.4.0     blocked        kafkajs        334     1.3     1.1
+```
+
+Only 1.3.14 with the syscall blocked pegs a core. So this isn't really about kafkajs. Any 1ms `setTimeout` loop does the same thing on that combination.
+
+strace over 2 seconds: 148k times `epoll_pwait(4, [], 1024, 0, [], 8) = 0 <0.000001>`, 6 to 7 µs apart. That's the 2/3 user + 1/3 sys.
+
+## The fix
+
+Patch kafkajs: if pending is empty and there's no throttle, don't schedule a timer. Everything else stays.
+
+```diff lang="js"
+       if (this.pending.length > 0) {
+         scheduleAt = scheduleAt > 0 ? scheduleAt : CHECK_PENDING_REQUESTS_INTERVAL
+       }
+-      // Prevent negative or invalid delays
+-      scheduleAt = Math.max(1, scheduleAt || 1)
++      if (scheduleAt <= 0) {
++        return
++      }
+       this.throttleCheckTimeoutId = setTimeout(() => {
+```
+
+In the repro, CPU went from 99% to 0.2%.
+
+Two extra things while I was there:
+
+- Pinned kafkajs from `^2.2.4` to exact `2.2.4`. Bun's `patchedDependencies` matches on the key `kafkajs@2.2.4`. If the lockfile resolves a different version, Bun silently skips the patch, `bun install` exits 0, and it doesn't say a word.
+- Added a test that imports `kafkajs/src/network/requestQueue/index.js` directly and asserts that an empty pending queue does not arm a timer. If the patch ever disappears, the test fails first.
+
+The patch is already in production. The periodic one-core spikes are gone. Once we move to Bun 1.4.0, this combination won't come back even if the patch gets dropped.
+
+[^syscall-numbers]: Syscall numbers depend on the architecture. On x86_64 the table is [syscall_64.tbl] in the kernel tree; if the box has auditd, `ausyscall x86_64 281` works too. These are the ones that show up later:
+
+    ```text
+    202  futex
+    281  epoll_pwait
+    441  epoll_pwait2
+    ```
+
+    On arm64, `epoll_pwait` is 22. `epoll_pwait2` is one of the newer syscalls that got a single number across architectures: 441 everywhere.
+
+[syscall_64.tbl]: https://github.com/torvalds/linux/blob/master/arch/x86/entry/syscalls/syscall_64.tbl
+[bun-epoll-timer-spin-repro]: https://github.com/BlackHole1/bun-epoll-timer-spin-repro
+[kafkajs#1556]: https://github.com/tulios/kafkajs/issues/1556
+[kafkajs#1704]: https://github.com/tulios/kafkajs/issues/1704
+[kafkajs#1572]: https://github.com/tulios/kafkajs/pull/1572
+[bun#34780]: https://github.com/oven-sh/bun/pull/34780
+[bun#29806]: https://github.com/oven-sh/bun/pull/29806

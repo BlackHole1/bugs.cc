@@ -1,0 +1,8 @@
+# Prettier is only invoked on "src/**/*.astro" (see package.json); oxfmt formats
+# everything else and also reads this file, so keep the patterns directory based.
+node_modules/
+dist/
+.astro/
+public/
+src/content/
+bun.lock

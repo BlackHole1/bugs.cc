@@ -1,0 +1,14 @@
+---
+/**
+ * Emits a JSON-LD block. `<` is escaped so a `</script>` inside a string value
+ * can never terminate the element.
+ */
+export interface Props {
+  data: Record<string, unknown>;
+}
+
+const { data } = Astro.props;
+const json = JSON.stringify(data).replace(/</g, '\\u003c');
+---
+
+<script is:inline type="application/ld+json" set:html={json} />

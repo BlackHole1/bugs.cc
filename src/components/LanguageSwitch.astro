@@ -1,0 +1,71 @@
+---
+import Languages from '@lucide/astro/icons/languages';
+import { otherLang, useTranslations, type Lang } from '@/i18n';
+import { homeUrl } from '@/lib/url';
+
+/**
+ * Link to the same page in the other language. The visible label is the
+ * target language's own name (`中文` on English pages, `English` on Chinese
+ * pages), as W3C recommends for language selectors, followed by a visually
+ * hidden description in the current page's language (`(Chinese)` / `(英文)`)
+ * so a screen reader user who does not know the target language still
+ * understands it (the hidden spans start with a space so the accessible name
+ * reads `中文 (Chinese)`, not `中文(Chinese)`: inline text nodes are
+ * concatenated as-is); a Lucide `languages` icon instead of a flag. `hreflang`
+ * and `lang` carry the BCP 47 tag of the target (`en` / `zh-Hans`).
+ *
+ * With `fallback` (a page that has no translation) nothing is linked: the
+ * switch renders as an inert `aria-disabled` `<span>` with the same label,
+ * no `href`, out of the tab order, and its `title` plus a hidden suffix say
+ * that the page has no version in the other language. Without `href` and
+ * without `fallback` (the 404 page, which has no translation to point at but
+ * is not "missing" one either) the link goes to the other language's home
+ * page.
+ */
+export interface Props {
+  lang: Lang;
+  /** Path of the translation; defaults to the other locale's home page. */
+  href?: string | undefined;
+  /** True when `href` is absent because the page has no translation. */
+  fallback?: boolean | undefined;
+}
+
+const { lang, href, fallback = false } = Astro.props;
+const t = useTranslations(lang);
+const other = otherLang(lang);
+const tOther = useTranslations(other);
+---
+
+{
+  fallback ? (
+    <span
+      class="nav-link lang-switch"
+      lang={tOther.htmlLang}
+      title={t.nav.noTranslation}
+      aria-disabled="true"
+    >
+      <Languages class="nav-icon" size={16} aria-hidden="true" focusable="false" />
+      <span>{tOther.nativeName}</span>
+      {/* Leading spaces: inline spans concatenate without a separator in the accessible name. */}
+      <span class="visually-hidden" lang={t.htmlLang}>
+        {' '}
+        ({t.languageNames[other]}) {t.nav.noTranslation}
+      </span>
+    </span>
+  ) : (
+    <a
+      class="nav-link lang-switch"
+      href={href ?? homeUrl(other)}
+      hreflang={tOther.htmlLang}
+      lang={tOther.htmlLang}
+      title={t.nav.languageSwitch}
+    >
+      <Languages class="nav-icon" size={16} aria-hidden="true" focusable="false" />
+      <span class="link-text">{tOther.nativeName}</span>
+      <span class="visually-hidden" lang={t.htmlLang}>
+        {' '}
+        ({t.languageNames[other]})
+      </span>
+    </a>
+  )
+}

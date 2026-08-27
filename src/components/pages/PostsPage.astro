@@ -1,0 +1,43 @@
+---
+import PostList from '@/components/PostList.astro';
+import TagCloud from '@/components/TagCloud.astro';
+import Base from '@/layouts/Base.astro';
+import { useTranslations, type Lang } from '@/i18n';
+import { getPosts, getTags } from '@/lib/posts';
+import { postsIndexUrl } from '@/lib/url';
+
+export interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+const posts = await getPosts(lang);
+const tags = (await getTags(lang)).toSorted((a, b) => a.tag.localeCompare(b.tag));
+---
+
+<Base
+  lang={lang}
+  title={t.posts.title}
+  description={t.posts.description}
+  path={postsIndexUrl(lang)}
+  alternates={{ en: postsIndexUrl('en'), zh: postsIndexUrl('zh') }}
+>
+  <h1 id="posts-title" class="page-title">{t.posts.title}</h1>
+  {
+    posts.length === 0 ? (
+      <p>{t.home.noPosts}</p>
+    ) : (
+      <PostList {posts} {lang} labelledBy="posts-title" />
+    )
+  }
+  {tags.length > 0 && <TagCloud {tags} {lang} />}
+</Base>
+
+<style>
+  .page-title {
+    font-size: 1.1rem;
+    color: var(--muted);
+    margin: 0 0 1rem;
+  }
+</style>

@@ -1,0 +1,22 @@
+# build output
+dist/
+# generated types and caches
+.astro/
+node_modules/
+.lh/
+.cache/
+*.tsbuildinfo
+
+# bun
+.bun/
+bun.lockb
+
+# environment variables
+.env
+.env.*
+!.env.example
+
+# macOS / editors
+.DS_Store
+.idea/
+*.swp

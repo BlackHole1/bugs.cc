@@ -1,0 +1,40 @@
+{
+  "$schema": "./node_modules/markdownlint-cli2/schema/markdownlint-cli2-config-schema.json",
+  // README, AGENTS.md and every post / page under src/content. `bun run lint:md`
+  // reports, `bun run lint:md:fix` rewrites what is fixable. CLAUDE.md is a
+  // symlink to AGENTS.md. `src/content/pages/` relaxes MD001 in its own file.
+  "globs": ["**/*.{md,mdx}"],
+  "ignores": ["node_modules/**", "dist/**", ".astro/**", "public/**", ".lh/**", "CLAUDE.md"],
+  "config": {
+    "default": true,
+    // Prose is not wrapped (oxfmt `proseWrap: preserve`).
+    "MD013": false,
+    // A `$ ` prompt in a shell block without the command's output is fine.
+    "MD014": false,
+    // Older posts put consecutive quotes in separate blockquotes on purpose.
+    "MD028": false,
+    // Older posts continue a numbered list after a paragraph or a code block
+    // (rendered as `<ol start="2">`); the rule cannot tell that from a typo.
+    "MD029": false,
+    // Raw HTML (`<img>`, `<iframe>`) and MDX components (`<YouTube />`) are used
+    // on purpose.
+    "MD033": false,
+    // Bare URLs are autolinked (GFM), and the `<url>` form this rule would
+    // rewrite them to is not valid MDX.
+    "MD034": false,
+    // A bold `**Label:**` line is a deliberate pattern, not a heading.
+    "MD036": false,
+    // Almost none of the existing images has alt text (~280 hits); enabling
+    // this means writing them.
+    "MD045": false,
+    // Table pipes are not padded to align: CJK width makes that unreliable and
+    // oxfmt does not format `src/content/`.
+    "MD060": false,
+    "MD004": { "style": "dash" },
+    // Tabs inside code blocks (Go, Makefile) are part of the code.
+    "MD010": { "code_blocks": false },
+    "MD024": { "siblings_only": true },
+    "MD049": { "style": "asterisk" },
+    "MD050": { "style": "asterisk" },
+  },
+}

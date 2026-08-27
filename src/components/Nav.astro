@@ -1,0 +1,54 @@
+---
+import Rss from '@lucide/astro/icons/rss';
+import LanguageSwitch from '@/components/LanguageSwitch.astro';
+import { useTranslations, type Lang } from '@/i18n';
+import { feedUrl, homeUrl, postsIndexUrl, projectsIndexUrl } from '@/lib/url';
+
+export interface Props {
+  lang: Lang;
+  /** Path of the current page, used for `aria-current`. */
+  currentPath?: string | undefined;
+  /** Target of the language switch (translation of the current page). */
+  switchHref?: string | undefined;
+  /** No translation: the switch goes to the other home page and says so. */
+  switchFallback?: boolean | undefined;
+}
+
+const { lang, currentPath, switchHref, switchFallback = false } = Astro.props;
+const t = useTranslations(lang);
+
+const current = (href: string) => (currentPath === href ? 'page' : undefined);
+---
+
+<nav class="site-nav" aria-label={t.nav.label}>
+  <ul>
+    <li>
+      <a class="nav-link" href={homeUrl(lang)} aria-current={current(homeUrl(lang))}>
+        <span class="link-text">{t.nav.home}</span>
+      </a>
+    </li>
+    <li>
+      <a class="nav-link" href={postsIndexUrl(lang)} aria-current={current(postsIndexUrl(lang))}>
+        <span class="link-text">{t.nav.posts}</span>
+      </a>
+    </li>
+    <li>
+      <a
+        class="nav-link"
+        href={projectsIndexUrl(lang)}
+        aria-current={current(projectsIndexUrl(lang))}
+      >
+        <span class="link-text">{t.nav.projects}</span>
+      </a>
+    </li>
+    <li>
+      <a class="nav-link" href={feedUrl(lang)} type="application/rss+xml">
+        <Rss class="nav-icon" size={16} aria-hidden="true" focusable="false" />
+        <span class="link-text">{t.nav.rss}</span>
+      </a>
+    </li>
+    <li>
+      <LanguageSwitch lang={lang} href={switchHref} fallback={switchFallback} />
+    </li>
+  </ul>
+</nav>

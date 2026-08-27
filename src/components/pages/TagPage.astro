@@ -1,0 +1,36 @@
+---
+import PostList from '@/components/PostList.astro';
+import Base from '@/layouts/Base.astro';
+import { otherLang, useTranslations, type Lang } from '@/i18n';
+import { getTags, type Post } from '@/lib/posts';
+import { sameTag, titleCaseTag, type TagInfo } from '@/lib/tags';
+import { tagUrl } from '@/lib/url';
+
+export interface Props {
+  lang: Lang;
+  tag: TagInfo;
+  posts: Post[];
+}
+
+const { lang, tag, posts } = Astro.props;
+const t = useTranslations(lang);
+// `Filtering for "Web Security"` (en) / `标签：web security` (zh), see SPEC 5.2.
+const heading = t.tags.filteringFor(lang === 'en' ? titleCaseTag(tag.tag) : tag.tag);
+const other = otherLang(lang);
+const existsInOther = (await getTags(other)).some((o) => sameTag(o.tag, tag.tag));
+const alternates = {
+  [lang]: tagUrl(lang, tag.tag),
+  ...(existsInOther ? { [other]: tagUrl(other, tag.tag) } : {}),
+};
+---
+
+<Base
+  lang={lang}
+  title={heading}
+  description={t.tags.pageDescription(tag.tag, posts.length)}
+  path={tagUrl(lang, tag.tag)}
+  alternates={alternates}
+>
+  <h1 id="tag-title">{heading}</h1>
+  <PostList {posts} {lang} labelledBy="tag-title" />
+</Base>

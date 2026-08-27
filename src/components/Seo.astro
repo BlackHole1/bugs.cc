@@ -1,0 +1,104 @@
+---
+import { useTranslations, type Lang } from '@/i18n';
+import { LANGS } from '@/i18n/types';
+import { SITE } from '@/lib/site';
+import { absoluteUrl, feedUrl } from '@/lib/url';
+
+/**
+ * Everything SEO-related in `<head>`: title, description, canonical, hreflang,
+ * Open Graph, Twitter card and the RSS `alternate` link.
+ *
+ * `hreflang` links (`en`, `zh-Hans`, `x-default`; the tags come from
+ * `i18n` `htmlLang`, the same values as `<html lang>`) are emitted only when
+ * the page really exists in both languages; a single-language page gets none.
+ * The 404 page passes `noCanonical` because `/404.html` is not a URL of its
+ * own. `og:locale` keeps Open Graph's own `en_US` / `zh_CN` format.
+ */
+export interface Props {
+  lang: Lang;
+  /** Page title without the site suffix. */
+  title: string;
+  description: string;
+  /** Canonical site path, e.g. `/posts/foo/`. */
+  path: string;
+  ogType?: 'website' | 'article' | undefined;
+  /** Site path of the Markdown copy of the page (`/posts/x/index.md`), linked as `rel="alternate"`. */
+  markdown?: string | undefined;
+  /** Same page in each language (for hreflang). */
+  alternates?: Partial<Record<Lang, string>> | undefined;
+  publishedTime?: Date | undefined;
+  modifiedTime?: Date | undefined;
+  tags?: string[] | undefined;
+  noindex?: boolean | undefined;
+  /** Omit canonical, `og:url` and hreflang (pages without a URL of their own). */
+  noCanonical?: boolean | undefined;
+}
+
+const {
+  lang,
+  title,
+  description,
+  path,
+  ogType = 'website',
+  alternates = {},
+  publishedTime,
+  modifiedTime,
+  tags = [],
+  noindex = false,
+  noCanonical = false,
+  markdown,
+} = Astro.props;
+
+const t = useTranslations(lang);
+const site = Astro.site ?? SITE.url;
+const fullTitle = title === t.siteTitle ? title : `${title} | ${t.siteTitle}`;
+const canonical = noCanonical ? undefined : absoluteUrl(path, site);
+const ogImage = absoluteUrl(SITE.ogImage, site);
+
+const present = LANGS.filter((l) => alternates[l]);
+const hreflangs: { hreflang: string; href: string }[] =
+  noCanonical || present.length < 2
+    ? []
+    : present.map((l) => ({
+        hreflang: useTranslations(l).htmlLang,
+        href: absoluteUrl(alternates[l]!, site),
+      }));
+const xDefault = alternates.en ?? alternates[lang] ?? path;
+---
+
+<title>{fullTitle}</title>
+<meta name="description" content={description} />
+<meta name="author" content={SITE.author} />
+{noindex && <meta name="robots" content="noindex" />}
+{canonical && <link rel="canonical" href={canonical} />}
+{hreflangs.map((h) => <link rel="alternate" hreflang={h.hreflang} href={h.href} />)}
+{
+  hreflangs.length > 0 && (
+    <link rel="alternate" hreflang="x-default" href={absoluteUrl(xDefault, site)} />
+  )
+}
+<link
+  rel="alternate"
+  type="application/rss+xml"
+  title={t.siteTitle}
+  href={absoluteUrl(feedUrl(lang), site)}
+/>
+{markdown && <link rel="alternate" type="text/markdown" href={absoluteUrl(markdown, site)} />}
+
+<meta property="og:site_name" content={t.siteTitle} />
+<meta property="og:type" content={ogType} />
+<meta property="og:title" content={fullTitle} />
+<meta property="og:description" content={description} />
+{canonical && <meta property="og:url" content={canonical} />}
+<meta property="og:locale" content={t.ogLocale} />
+<meta property="og:image" content={ogImage} />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+{publishedTime && <meta property="article:published_time" content={publishedTime.toISOString()} />}
+{modifiedTime && <meta property="article:modified_time" content={modifiedTime.toISOString()} />}
+{tags.map((tag) => <meta property="article:tag" content={tag} />)}
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:site" content={`@${SITE.twitter}`} />
+<meta name="twitter:title" content={fullTitle} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={ogImage} />

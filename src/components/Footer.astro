@@ -1,0 +1,25 @@
+---
+import { useTranslations, type Lang } from '@/i18n';
+import { SITE } from '@/lib/site';
+import { llmsUrl } from '@/lib/url';
+
+export interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+---
+
+<footer class="site-footer">
+  <small>
+    <a href={SITE.license.url} rel="license"><span class="link-text">{SITE.copyright}</span></a>
+    {' | '}
+    {t.footer.madeWith.before}
+    {' '}
+    <a href="https://astro.build/"><span class="link-text">Astro</span></a>
+    {t.footer.madeWith.after && ` ${t.footer.madeWith.after}`}
+    {' | '}
+    <a href={llmsUrl()} title={t.footer.llms}><span class="link-text">llms.txt</span></a>
+  </small>
+</footer>

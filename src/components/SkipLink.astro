@@ -1,0 +1,14 @@
+---
+import { useTranslations, type Lang } from '@/i18n';
+
+export interface Props {
+  lang: Lang;
+  /** Id of the main landmark (without `#`). */
+  target?: string | undefined;
+}
+
+const { lang, target = 'main' } = Astro.props;
+const t = useTranslations(lang);
+---
+
+<a class="skip-link" href={`#${target}`}>{t.skipToContent}</a>

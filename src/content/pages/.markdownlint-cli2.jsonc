@@ -1,0 +1,8 @@
+{
+  "$schema": "../../../node_modules/markdownlint-cli2/schema/markdownlint-cli2-config-schema.json",
+  // src/components/pages/Home.astro renders the body under a visually hidden
+  // `<h2>About</h2>`, so the page's own sections start at h3.
+  "config": {
+    "MD001": false
+  }
+}

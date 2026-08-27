@@ -1,0 +1,19 @@
+---
+import Redirect from '@/components/Redirect.astro';
+import { getAliasRedirects } from '@/lib/posts';
+
+/**
+ * One catch-all route for every old URL (SPEC 5.3): post aliases from front
+ * matter (`/zh/p/x/`, `/zh/2016/05/30/x/`), their un-prefixed root forms and
+ * `/en/` -> `/`.
+ * `getAliasRedirects` throws when an alias would overwrite a real page.
+ */
+export async function getStaticPaths() {
+  const redirects = await getAliasRedirects();
+  return redirects.map((r) => ({ params: { alias: r.param }, props: { to: r.to, lang: r.lang } }));
+}
+
+const { to, lang } = Astro.props;
+---
+
+<Redirect to={to} lang={lang} />

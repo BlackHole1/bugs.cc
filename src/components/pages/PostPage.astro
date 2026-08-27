@@ -1,0 +1,137 @@
+---
+import Forward from '@lucide/astro/icons/forward';
+import { render } from 'astro:content';
+import JsonLd from '@/components/JsonLd.astro';
+import Lightbox from '@/components/Lightbox.astro';
+import PostMeta from '@/components/PostMeta.astro';
+import PrevNext from '@/components/PrevNext.astro';
+import Sidenotes from '@/components/Sidenotes.astro';
+import TableOfContents from '@/components/TableOfContents.astro';
+import Base from '@/layouts/Base.astro';
+import { useTranslations } from '@/i18n';
+import { toIsoWithOffset } from '@/lib/dates';
+import {
+  descriptionOf,
+  getAdjacent,
+  getTranslation,
+  langOf,
+  pathOf,
+  slugOf,
+  type Post,
+} from '@/lib/posts';
+import { SITE } from '@/lib/site';
+import { buildToc, shouldRenderToc } from '@/lib/toc';
+import { absoluteUrl, postMarkdownUrl, xIntentUrl } from '@/lib/url';
+import type { ReadingTime } from '@/plugins/reading-time';
+
+export interface Props {
+  post: Post;
+}
+
+const { post } = Astro.props;
+const lang = langOf(post);
+const t = useTranslations(lang);
+const { Content, headings, remarkPluginFrontmatter } = await render(post);
+const readingTime = remarkPluginFrontmatter.readingTime as ReadingTime | undefined;
+const toc = buildToc(headings);
+const translation = await getTranslation(post);
+const { prev, next } = await getAdjacent(post);
+const path = pathOf(post);
+const markdownPath = postMarkdownUrl(lang, slugOf(post));
+const alternates = {
+  [lang]: path,
+  ...(translation ? { [langOf(translation)]: pathOf(translation) } : {}),
+};
+const description = descriptionOf(post);
+const hasCode = post.body?.includes('```') ?? false;
+// The Lightbox (dialog + script) is only shipped when the body has an <img>.
+// Markdown entries expose their HTML; MDX falls back to a source scan.
+const hasImages =
+  post.rendered?.html !== undefined
+    ? /<img\b/i.test(post.rendered.html)
+    : /!\[[^\]]*\]\(|<img\b/i.test(post.body ?? '');
+
+// The sidenotes script is only shipped when the body has GFM footnotes.
+const hasFootnotes =
+  post.rendered?.html !== undefined
+    ? post.rendered.html.includes('data-footnotes')
+    : /^\[\^[^\]]+\]:/m.test(post.body ?? '');
+
+const site = Astro.site ?? SITE.url;
+const url = absoluteUrl(path, site);
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: post.data.title,
+  description,
+  datePublished: toIsoWithOffset(post.data.date),
+  dateModified: toIsoWithOffset(post.data.updated ?? post.data.date),
+  author: { '@type': 'Person', name: SITE.author, url: SITE.url, email: SITE.email },
+  inLanguage: t.htmlLang,
+  url,
+  mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+  image: absoluteUrl(SITE.ogImage, site),
+  keywords: post.data.tags.join(', '),
+};
+---
+
+<Base
+  lang={lang}
+  title={post.data.title}
+  description={description}
+  path={path}
+  ogType="article"
+  alternates={alternates}
+  preloadCodeFont={hasCode}
+  publishedTime={post.data.date}
+  modifiedTime={post.data.updated}
+  tags={post.data.tags}
+  markdown={markdownPath}
+>
+  <JsonLd slot="head" data={jsonLd} />
+  <article class="post" aria-labelledby="post-title">
+    <h1 id="post-title" class="post-title">{post.data.title}</h1>
+    <PostMeta
+      lang={lang}
+      date={post.data.date}
+      updated={post.data.updated}
+      readingMinutes={readingTime?.minutes}
+      tags={post.data.tags}
+    />
+    {shouldRenderToc(toc) && <TableOfContents lang={lang} entries={toc} />}
+    <div class="post-body">
+      <Content />
+    </div>
+    <p class="post-reply">
+      <a
+        href={xIntentUrl(t.post.replyText(SITE.twitter, url))}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <span class="link-text">
+          {t.post.replyOnX}
+          <span class="visually-hidden">{` (${t.nav.externalLink})`}</span>
+          <Forward class="reply-icon" size={16} aria-hidden="true" focusable="false" />
+        </span>
+      </a>
+      {' | '}
+      <a href={markdownPath}><span class="link-text">{t.post.viewMarkdown}</span></a>
+    </p>
+  </article>
+  <PrevNext
+    lang={lang}
+    prev={prev ? { href: pathOf(prev), title: prev.data.title } : undefined}
+    next={next ? { href: pathOf(next), title: next.data.title } : undefined}
+  />
+  {hasFootnotes && <Sidenotes />}
+  {
+    hasImages && (
+      <Lightbox
+        selector=".post-body img"
+        label={t.lightbox.label}
+        openHint={t.lightbox.open}
+        closeLabel={t.lightbox.close}
+      />
+    )
+  }
+</Base>

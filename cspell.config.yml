@@ -1,0 +1,48 @@
+$schema: https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json
+language: en
+ignorePaths:
+  - node_modules
+  - dist
+  - .astro
+  - bun.lock
+  - public
+  - src/assets
+ignoreRegExpList:
+  # e.g Cui's
+  - \S+\'s
+  # inline SVG data URIs (percent-encoded markup)
+  - data:image/svg\+xml[^")]+
+words:
+  - 'EAAC'
+  - 'sesmate'
+  - 'wxwork'
+  - 'dockswipe'
+  - 'alicloud'
+  - 'tablestore'
+  - 'Exposé'
+  - 'trackpad'
+  - 'antfu'
+  - 'IntelliJ'
+  - 'vsock'
+  - 'oomol'
+  - 'pygmentscodefencesguesssyntax'
+  - 'pygmentscodefences'
+  - 'satteri'
+  - 'Sätteri'
+  - 'hast'
+  - 'mdast'
+  - 'oxlint'
+  - 'oxfmt'
+  - 'bunx'
+  - 'lucide'
+  - 'umami'
+  - 'hreflang'
+  - 'noindex'
+  - 'noopener'
+  - 'noreferrer'
+  - 'libimagequant'
+  - 'PSNR'
+  - 'IHDR'
+  - 'dracula'
+  - 'Verdana'
+  - 'markdownlint'

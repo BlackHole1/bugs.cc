@@ -1,0 +1,118 @@
+---
+import { render } from 'astro:content';
+import PostList from '@/components/PostList.astro';
+import Base from '@/layouts/Base.astro';
+import { useTranslations, type Lang } from '@/i18n';
+import { SITE_TIME_ZONE, toIsoWithOffset } from '@/lib/dates';
+import { getPage, getPosts } from '@/lib/posts';
+import { homeUrl, postsIndexUrl } from '@/lib/url';
+
+export interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+const page = await getPage(lang, 'home');
+const recent = (await getPosts(lang)).slice(0, 5);
+const description = page?.data.description?.trim() || t.siteDescription;
+
+/**
+ * The bio comes from `pages/<lang>/home.md` (no avatar here: the site logo in
+ * the header is the avatar). The `%%CLOCK%%` token in the "Time" list item
+ * becomes a live clock (`YYYY-MM-DD HH:MM`, refreshed once a minute like the
+ * old site; seconds would be content that updates without a way to pause it,
+ * WCAG 2.2.2). That needs the rendered HTML string, which the glob loader
+ * exposes as `rendered.html`; if it is missing (e.g. an MDX page) the
+ * component falls back to `<Content />` untouched.
+ */
+const CLOCK_TOKEN = '%%CLOCK%%';
+const now = new Date();
+const clockText = new Intl.DateTimeFormat('sv-SE', {
+  timeZone: SITE_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+}).format(now);
+const clockHtml = `<time id="clock" class="clock" datetime="${toIsoWithOffset(now)}">${clockText}</time>`;
+
+let body: string | undefined;
+let Content: Awaited<ReturnType<typeof render>>['Content'] | undefined;
+const html = page?.rendered?.html;
+if (html !== undefined) {
+  body = html.replace(CLOCK_TOKEN, clockHtml);
+} else if (page) {
+  Content = (await render(page)).Content;
+}
+---
+
+<Base
+  lang={lang}
+  title={t.home.title}
+  description={description}
+  path={homeUrl(lang)}
+  alternates={{ en: homeUrl('en'), zh: homeUrl('zh') }}
+>
+  <h1 class="visually-hidden">{t.siteTitle}</h1>
+  <section class="bio" aria-labelledby="bio-heading">
+    <h2 id="bio-heading" class="visually-hidden">{t.home.aboutHeading}</h2>
+    {body !== undefined && <Fragment set:html={body} />}
+    {Content && <Content />}
+  </section>
+  <section aria-labelledby="recent-heading">
+    <h2 id="recent-heading">{t.home.recentPosts}</h2>
+    {
+      recent.length === 0 ? (
+        <p>{t.home.noPosts}</p>
+      ) : (
+        <PostList posts={recent} {lang} labelledBy="recent-heading" />
+      )
+    }
+    <p><a href={postsIndexUrl(lang)}>{t.home.allPosts}</a></p>
+  </section>
+  <!-- Live clock for the `%%CLOCK%%` token; a no-op when the page has no clock. -->
+  <script is:inline>
+    (() => {
+      const el = document.getElementById('clock');
+      if (!el) return;
+      const fmt = new Intl.DateTimeFormat('sv-SE', {
+        timeZone: 'Asia/Shanghai',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      });
+      const tick = () => {
+        const s = fmt.format(new Date());
+        el.textContent = s;
+        el.dateTime = s.replace(' ', 'T') + ':00+08:00';
+      };
+      // Refresh on the minute; paused while the page is hidden.
+      let timer;
+      const schedule = () => {
+        timer = setTimeout(
+          () => {
+            tick();
+            schedule();
+          },
+          60000 - (Date.now() % 60000),
+        );
+      };
+      const start = () => {
+        clearTimeout(timer);
+        tick();
+        schedule();
+      };
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) clearTimeout(timer);
+        else start();
+      });
+      start();
+    })();
+  </script>
+</Base>

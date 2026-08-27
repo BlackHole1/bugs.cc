@@ -1,0 +1,771 @@
+/* Text, headings, links, lists, tables, blockquotes, images, page blocks. */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--heading);
+  font-weight: bold;
+  line-height: 1.3;
+  margin: 1.6em 0 0.6em;
+  scroll-margin-top: 1rem;
+}
+
+h1 {
+  font-size: 2rem;
+  margin: 0.5em 0;
+}
+
+h2 {
+  font-size: 1.4rem;
+}
+
+h3 {
+  font-size: 1.2rem;
+}
+
+h4,
+h5,
+h6 {
+  font-size: 1rem;
+}
+
+@media (max-width: 639px) {
+  h1 {
+    font-size: 1.6rem;
+  }
+
+  h2 {
+    font-size: 1.3rem;
+  }
+}
+
+strong,
+b {
+  color: var(--heading);
+}
+
+a {
+  color: var(--link);
+  text-decoration: none;
+}
+
+/* Links: a bar under the text rather than a text underline (antfu.me /
+   nuxt.com style, sits below the descenders like a border-bottom), the same
+   everywhere. Two background layers, so it follows the text across line
+   breaks: a 1px line at rest (--underline-rest; transparent for links that
+   only show their underline on hover, like the site title), and on hover a
+   2px bar that sweeps in from the left and, on leave, out to the right (the
+   position swap is invisible while the layer is 0 wide, so only
+   background-size animates). The layers hang from the content box, so padded
+   links (tag cloud) keep the bar next to the text. Links whose box is taller
+   than their text (flex boxes with a tap height, an icon or a label: nav,
+   tags, footer, reply, prev/next, project cards) wrap the text in a
+   `.link-text` span and the bar goes on the span instead. Image links,
+   heading anchors and footnote references (one digit in a `<sup>`, no room
+   for a bar) are left alone; the TOC opts out. `:where()` keeps the
+   specificity at (0,0,1) so a plain class can still override the background
+   (the skip link). The global reduced-motion rule flattens the transition. */
+a:where(:not(.heading-anchor, [data-footnote-ref], :has(img), :has(.link-text))),
+.link-text {
+  background-image:
+    linear-gradient(currentColor, currentColor),
+    linear-gradient(var(--underline-rest), var(--underline-rest));
+  background-repeat: no-repeat;
+  background-origin: content-box;
+  background-position:
+    100% 100%,
+    0 100%;
+  background-size:
+    0 2px,
+    100% 1px;
+  transition: background-size var(--underline-duration) var(--underline-ease);
+}
+
+a:where(:not(.heading-anchor, [data-footnote-ref], :has(img), :has(.link-text))):hover,
+a:hover .link-text {
+  background-position:
+    0 100%,
+    0 100%;
+  background-size:
+    100% 2px,
+    100% 1px;
+}
+
+/* Heading anchors (plugins/heading-anchors): an empty link after the heading
+   text whose `#` is drawn here (the alternative text '' keeps it out of the
+   accessible name). Hidden until the heading is hovered or the link focused
+   (bun.com/blog style); the heading text itself is not a link. */
+.heading-anchor {
+  margin-left: 0.4em;
+  color: var(--muted);
+  opacity: 0;
+  transition:
+    opacity var(--underline-duration) var(--underline-ease),
+    color var(--underline-duration) var(--underline-ease);
+}
+
+.heading-anchor::before {
+  content: '#' / '';
+}
+
+:is(h1, h2, h3, h4, h5, h6):hover > .heading-anchor,
+.heading-anchor:focus-visible {
+  opacity: 1;
+}
+
+.heading-anchor:hover {
+  color: var(--link);
+}
+
+p {
+  margin: 0 0 1em;
+}
+
+ul,
+ol {
+  padding-left: 1.5em;
+}
+
+li + li {
+  margin-top: 0.25em;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 2em 0;
+}
+
+blockquote {
+  margin: 1em 0;
+  padding: 0 1em;
+  border-left: 5px solid var(--quote-border);
+  color: var(--muted);
+  font-style: italic;
+}
+
+blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+/* Narrow screens: the table scrolls inside itself, never the page. */
+@media (max-width: 799px) {
+  table {
+    display: block;
+    overflow-x: auto;
+  }
+}
+
+th,
+td {
+  border: 1px solid var(--border);
+  padding: 0.6em 1em;
+  text-align: left;
+}
+
+th {
+  text-align: center;
+  color: var(--heading);
+}
+
+tr:nth-child(2n) {
+  background: var(--zebra);
+}
+
+img,
+video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1em auto;
+}
+
+/* Zoom buttons wrapped around images by the Lightbox island. */
+.zoomable {
+  display: block;
+  max-width: 100%;
+  margin: 1em auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: zoom-in;
+}
+
+.zoomable > img {
+  margin: 0;
+}
+
+figure {
+  margin: 1em 0;
+}
+
+figcaption {
+  color: var(--muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+kbd {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  padding: 0.1em 0.4em;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--zebra);
+  color: var(--heading);
+}
+
+small {
+  font-size: 0.875rem;
+}
+
+sub,
+sup {
+  line-height: 0;
+}
+
+time {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Long URLs and identifiers in prose must not widen the page. */
+.post-body,
+.bio {
+  overflow-wrap: anywhere;
+}
+
+iframe {
+  max-width: 100%;
+}
+
+/* External links in prose open in a new tab (plugins/external-links, which
+   also appends the visually hidden "(opens in a new tab)"): a small
+   external-link icon (Lucide) after the text. Image links get none. */
+.post-body a[target='_blank']:not(:has(img))::after,
+.bio a[target='_blank']:not(:has(img))::after {
+  content: '';
+  display: inline-block;
+  width: 0.6em;
+  height: 0.6em;
+  margin-left: 0.2em;
+  background-color: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 3h6v6'/%3E%3Cpath d='M10 14 21 3'/%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+/* Footnotes (GFM `[^id]`, plugins/footnotes): a rule and a smaller size set
+   the section off from the prose; its `<h2>` is visually hidden and names the
+   section for assistive technology. The superscript reference gets a little
+   horizontal room instead of the underline bar. */
+.footnotes {
+  margin-top: 2.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.footnotes li {
+  scroll-margin-top: 1rem;
+}
+
+a[data-footnote-ref] {
+  padding: 0 0.15em;
+  border-radius: 3px;
+  transition:
+    color var(--underline-duration) var(--underline-ease),
+    background-color var(--underline-duration) var(--underline-ease);
+}
+
+a[data-footnote-ref]:hover,
+a[data-footnote-ref].is-active {
+  color: var(--heading);
+  background-color: var(--inline-code-bg);
+}
+
+/* Sidenotes (>= 1440px; Sidenotes.astro, tokens in global.css). The same
+   section becomes an absolutely positioned column to the right of the
+   reading column (LessWrong / Google Docs comment model, see
+   docs/ARCHITECTURE.md deviation 83). Without JavaScript the notes stack from
+   the top of the column in order, all visible. Once the script has measured
+   them (`data-sidenotes` on the section; `init` while that is in progress)
+   each note is positioned at the height of its reference, pushed down so notes never overlap, and shown
+   only while a reference is in the viewport; the hovered, focused or
+   targeted note is always shown and pinned next to its reference. A note
+   taller than 60vh is clipped with a fade (`is-clipped`) until it is active.
+   Print and narrow screens keep the list at the end of the post. */
+@media (min-width: 1440px) {
+  .post-body {
+    position: relative;
+  }
+
+  .footnotes {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(100% + var(--sidenote-gap));
+    width: min(var(--sidenote-width), (100vw - var(--width)) / 2 - var(--sidenote-gap) - 16px);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+
+  .footnotes ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: sidenote;
+  }
+
+  .footnotes li {
+    position: relative;
+    counter-increment: sidenote;
+    margin: 0 0 0.75rem;
+    padding: 0 0 0 1.4rem;
+    border-left: 2px solid var(--border);
+    outline-offset: 4px;
+    transition:
+      color var(--underline-duration) var(--underline-ease),
+      border-color var(--underline-duration) var(--underline-ease);
+  }
+
+  .footnotes li::before {
+    content: counter(sidenote);
+    position: absolute;
+    top: 0.1em;
+    left: 0.45rem;
+    font-size: 0.8em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .footnotes li p {
+    margin: 0 0 0.6em;
+  }
+
+  .footnotes li > :last-child {
+    margin-bottom: 0;
+  }
+
+  .footnotes li .expressive-code {
+    margin: 0.5em 0;
+    font-size: 0.9em;
+  }
+
+  .footnotes[data-sidenotes] li {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    margin: 0;
+    max-height: 60vh;
+    overflow: hidden;
+    transition:
+      opacity var(--underline-duration) var(--underline-ease),
+      transform var(--underline-duration) var(--underline-ease),
+      color var(--underline-duration) var(--underline-ease),
+      border-color var(--underline-duration) var(--underline-ease),
+      visibility 0s linear var(--underline-duration);
+  }
+
+  /* `init`: set before first paint and at the breakpoint, until the script
+     has laid the notes out, so their first positions are not animated
+     (Sidenotes.astro). */
+  .footnotes[data-sidenotes='init'] li {
+    transition: none;
+  }
+
+  .footnotes[data-sidenotes] li:not(.is-visible, .is-active, :target, :focus-within) {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .footnotes[data-sidenotes] li:is(.is-visible, .is-active, :target, :focus-within) {
+    transition-delay: 0s;
+  }
+
+  .footnotes[data-sidenotes] li.is-clipped:not(.is-active, :target, :focus-within) {
+    mask-image: linear-gradient(#000 calc(100% - 3rem), transparent);
+  }
+
+  .footnotes li:is(.is-active, :target, :focus-within) {
+    max-height: none;
+    color: var(--text);
+    border-left-color: var(--link);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .footnotes li,
+  a[data-footnote-ref] {
+    transition: none;
+  }
+}
+
+@media print {
+  .footnotes {
+    position: static;
+    width: auto;
+  }
+
+  .footnotes[data-sidenotes] li {
+    position: static;
+    max-height: none;
+    opacity: 1;
+    visibility: visible;
+    transform: none !important;
+    mask-image: none;
+  }
+}
+
+/* Post lists are styled in PostList.astro (scoped). */
+
+.tag-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  font-style: normal;
+}
+
+.clock {
+  color: inherit;
+}
+
+/* Post page. */
+.post-title {
+  overflow-wrap: anywhere;
+}
+
+.byline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 1.25em;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-style: italic;
+  margin: 0 0 1.5em;
+}
+
+.byline time {
+  color: inherit;
+}
+
+.byline-item {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.3em;
+}
+
+.byline-tags {
+  gap: 0;
+}
+
+.byline .tag-link {
+  margin-right: 0.9em;
+}
+
+.byline .tag-link:last-child {
+  margin-right: 0;
+}
+
+.post-reply {
+  margin-top: 2.5em;
+}
+
+/* Tap height for both links; the text of each is one `.link-text` span (for
+   the reply link together with the arrow, so the bar runs under it too). */
+.post-reply a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+}
+
+/* The reply arrow (Lucide `forward`, the shape of U+21AA) as an inline SVG
+   rather than the character, whose fallback-font glyph sat high and to the
+   right of the text; sized to the text and pulled down onto the baseline the
+   way icon fonts do. */
+.reply-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-left: 0.3em;
+  vertical-align: -0.15em;
+}
+
+/* Table of contents: <details> inline above the body (chevron + label);
+   fixed at the left edge of the viewport on wide screens (see below).
+   The list is styled after nuxt.com: entries are muted text that brightens
+   on hover and takes the link colour when current; a 1px "circuit" line runs
+   down the left of the list, stepping right by `--toc-indent` for nested
+   entries, and the current entry is a link-coloured segment of that line
+   that slides into place. TableOfContents.astro draws the line (an SVG
+   `mask-image` sized to the measured list) and positions the segment. */
+.toc {
+  /* Gap between the line and the text, and the indent of each nested level. */
+  --toc-line-gap: 1rem;
+  --toc-indent: 0.75rem;
+
+  margin: 0 0 1.5em;
+  font-size: 0.9rem;
+}
+
+.toc-icon {
+  display: none;
+}
+
+.toc summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  min-height: var(--tap);
+  cursor: pointer;
+  font-weight: bold;
+  color: var(--heading);
+  list-style: none;
+  user-select: none;
+}
+
+.toc summary::-webkit-details-marker {
+  display: none;
+}
+
+.toc summary::before {
+  content: '';
+  flex: none;
+  width: 0.45em;
+  height: 0.45em;
+  margin-left: 0.15em;
+  border: solid currentColor;
+  border-width: 0 2px 2px 0;
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+}
+
+.toc details[open] > summary::before {
+  transform: rotate(45deg);
+}
+
+.toc-list-wrap {
+  position: relative;
+  margin-top: 0.25em;
+  padding-bottom: 0.5em;
+}
+
+.toc ol {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 var(--toc-line-gap);
+}
+
+.toc ol ol {
+  padding-left: var(--toc-indent);
+}
+
+.toc li {
+  margin: 0;
+}
+
+.toc a {
+  display: block;
+  min-height: var(--tap);
+  padding: 0.55em 0;
+  color: var(--muted);
+  background-image: none;
+  line-height: 1.5;
+  transition: color 0.2s ease;
+}
+
+.toc a:hover {
+  color: var(--text);
+}
+
+.toc a[aria-current='location'] {
+  color: var(--link);
+}
+
+/* The track box is sized and masked by the script; until then it is 0 x 0. */
+.toc-track {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+.toc-track-line {
+  position: absolute;
+  inset: 0;
+  background: var(--border);
+}
+
+.toc-track-active {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--toc-active-height, 0);
+  background: var(--link);
+  transform: translateY(var(--toc-active-top, 0));
+  transition:
+    transform 0.25s ease-out,
+    height 0.25s ease-out;
+}
+
+@supports not ((mask-image: none) or (-webkit-mask-image: none)) {
+  .toc-track {
+    display: none;
+  }
+}
+
+/* Previous / next post. */
+.prev-next {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.prev-next-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  min-height: var(--tap);
+  padding: 0.35em 0;
+  max-width: 100%;
+}
+
+.prev-next-link.next {
+  margin-left: auto;
+  text-align: right;
+}
+
+.prev-next-label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.prev-next-icon {
+  flex: none;
+  color: var(--muted);
+}
+
+/* Wide screens: the TOC leaves the flow and is fixed at the left edge of
+   the viewport (antfu.me style). Only the list icon is visible by default;
+   the entries fade in when the pointer enters the strip (i.e. approaches the
+   TOC from the body) or focus moves into the list. The strip is the left
+   margin of the body, capped at `--toc-width` plus the edge and gap paddings,
+   so it never overlaps the column and never intercepts clicks on the body
+   (10px spare for classic scrollbars, which `100vw` includes). Breakpoint: the
+   body (928px = 880px + 2 x 24px) plus 236px on each side = 1400px, where the
+   list is 190px wide. Keep the value in sync with the `matchMedia()` in
+   TableOfContents.astro. A long list is clipped by `.toc-body`, which is
+   `overflow: hidden` rather than `auto` on purpose: the wheel must always
+   scroll the article, even with the pointer over the TOC (a scrollable box
+   would capture it, and `overscroll-behavior` would swallow it when the list
+   is too short to scroll). The list still follows the reading position:
+   TableOfContents.astro scrolls `.toc-body` programmatically to keep the
+   active entry in view, and moving focus into a clipped entry scrolls it in
+   as usual. */
+@media (min-width: 1400px) {
+  .toc {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1;
+    width: min(
+      calc(var(--toc-width) + var(--toc-edge) + var(--toc-gap)),
+      calc((100vw - var(--width) - 2 * var(--gutter)) / 2 - 10px)
+    );
+    margin: 0;
+    padding: var(--toc-top) var(--toc-gap) 1.5rem var(--toc-edge);
+    font-size: 0.85rem;
+  }
+
+  .toc summary {
+    width: 1.75rem;
+    height: 1.75rem;
+    min-height: 0;
+    padding: 0;
+    gap: 0;
+    justify-content: center;
+    margin-left: -0.25rem;
+    border-radius: 0.25rem;
+    color: var(--muted);
+    transition: color 0.3s ease;
+  }
+
+  .toc summary::before {
+    display: none;
+  }
+
+  .toc-icon {
+    display: block;
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .toc-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .toc-body {
+    /* 4px of room for the focus ring (2px + 2px offset), which the scroll
+       container would otherwise clip. */
+    margin: calc(0.5rem - 4px) -4px 0;
+    padding: 4px;
+    max-height: calc(100vh - var(--toc-top) - 1.75rem - 0.5rem - 1.5rem);
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+
+  .toc-list-wrap {
+    margin-top: 0;
+  }
+
+  .toc:hover summary,
+  .toc:focus-within summary {
+    color: var(--heading);
+  }
+
+  .toc:hover .toc-body,
+  .toc:focus-within .toc-body {
+    opacity: 1;
+  }
+
+  .toc a {
+    min-height: 0;
+    padding: 0.3em 0;
+  }
+}

@@ -1,0 +1,246 @@
+---
+import TocIcon from '@lucide/astro/icons/table-of-contents';
+import { useTranslations, type Lang } from '@/i18n';
+import type { TocEntry } from '@/lib/toc';
+
+/**
+ * Collapsible table of contents: `<nav>` + `<details>`/`<summary>` so it works
+ * with zero JS. Rendered open; a tiny inline script closes it before first
+ * paint on narrow screens (< 1400px), where it sits above the body as a
+ * "Table of contents" disclosure. On wide screens it is fixed at the left
+ * edge of the viewport (antfu.me style): only the list icon is visible, and
+ * the entries fade in when the pointer enters the left margin strip or focus
+ * moves into the list (see typography.css, which owns the same breakpoint).
+ * A bundled script highlights the active heading and draws the "circuit"
+ * track next to the list (see below). The `<nav>` is named by the summary
+ * text (`aria-labelledby`) so screen readers do not get "Table of contents"
+ * twice.
+ */
+export interface Props {
+  lang: Lang;
+  entries: TocEntry[];
+}
+
+const { lang, entries } = Astro.props;
+const t = useTranslations(lang);
+
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+function renderList(items: TocEntry[]): string {
+  if (items.length === 0) return '';
+  const li = items
+    .map(
+      (e) =>
+        `<li><a href="#${encodeURIComponent(e.slug)}">${escapeHtml(e.text)}</a>${renderList(e.children)}</li>`,
+    )
+    .join('');
+  return `<ol>${li}</ol>`;
+}
+---
+
+<nav class="toc" aria-labelledby="toc-heading" data-toc>
+  <details id="toc" open>
+    <summary>
+      <TocIcon class="toc-icon" size={20} aria-hidden="true" focusable="false" />
+      <span id="toc-heading" class="toc-label">{t.post.tableOfContents}</span>
+    </summary>
+    <div class="toc-body">
+      <div class="toc-list-wrap">
+        <div class="toc-track" aria-hidden="true">
+          <div class="toc-track-line"></div>
+          <div class="toc-track-active" hidden></div>
+        </div>
+        <Fragment set:html={renderList(entries)} />
+      </div>
+    </div>
+  </details>
+</nav>
+<script is:inline>
+  // Collapsed by default on narrow screens (same breakpoint as the fixed TOC
+  // in typography.css); runs before the body is painted.
+  if (!matchMedia('(min-width: 1400px)').matches) document.getElementById('toc').open = false;
+</script>
+
+<script>
+  /**
+   * Active heading tracking. Every top-level block of `.post-body` is mapped to
+   * the TOC heading that precedes it; the section of the topmost block inside
+   * the observed band (10%..40% of the viewport) is marked with
+   * `aria-current="location"`.
+   *
+   * Track (nuxt.com style): a 1px line runs down the left of the list and
+   * steps right for nested entries, and the active entry is a segment of that
+   * line that slides to the current heading. The line is an SVG path used as
+   * the `mask-image` of `.toc-track`, drawn from the measured position of
+   * every link, so wrapped entries and any nesting depth are fine; a
+   * ResizeObserver redraws it when the list changes size (breakpoint, fonts,
+   * `<details>` opening). `.toc-track-active` is a link-coloured child of the
+   * same masked box, translated to the active link, so it follows the bends.
+   */
+  const atPageEnd = () =>
+    window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+
+  function initToc(nav: HTMLElement, body: HTMLElement): void {
+    const links = new Map<string, HTMLAnchorElement>();
+    for (const a of nav.querySelectorAll<HTMLAnchorElement>('a[href^="#"]')) {
+      links.set(decodeURIComponent(a.hash.slice(1)), a);
+    }
+    if (links.size === 0) return;
+
+    // A block is attributed to the heading it is (or the first heading it
+    // contains, e.g. `> ## Title` renders the heading inside a blockquote);
+    // blocks without headings belong to the last heading seen before them.
+    const sectionOf = new Map<Element, HTMLAnchorElement>();
+    let current: HTMLAnchorElement | undefined;
+    for (const block of body.children) {
+      let first = block.id ? links.get(block.id) : undefined;
+      let last = first;
+      if (!first) {
+        for (const el of block.querySelectorAll<HTMLElement>('[id]')) {
+          const link = links.get(el.id);
+          if (!link) continue;
+          first ??= link;
+          last = link;
+        }
+      }
+      const section = first ?? current;
+      if (section) sectionOf.set(block, section);
+      if (last) current = last;
+    }
+    if (sectionOf.size === 0) return;
+
+    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+    const visible = new Set<Element>();
+    let active: HTMLAnchorElement | undefined;
+
+    // `.toc-body` clips the list on wide screens (typography.css). It is
+    // `overflow: hidden`, so only this script scrolls it (scrollTo() works on
+    // hidden overflow); the wheel goes to the page instead.
+    const scroller = nav.querySelector<HTMLElement>('.toc-body') ?? nav;
+    const wrap = nav.querySelector<HTMLElement>('.toc-list-wrap');
+    const list = wrap?.querySelector<HTMLElement>(':scope > ol');
+    const track = wrap?.querySelector<HTMLElement>('.toc-track');
+    const activeBar = track?.querySelector<HTMLElement>('.toc-track-active');
+
+    // Position of every link relative to the track, refreshed by drawTrack().
+    const positions = new Map<HTMLAnchorElement, { top: number; height: number }>();
+
+    // Vertical run of the diagonal on each side of a level change (px).
+    const BEND = 6;
+
+    const drawTrack = () => {
+      if (!wrap || !list || !track || !activeBar) return;
+      const box = wrap.getBoundingClientRect();
+      if (box.height === 0) return; // closed <details>
+      // The top-level list's left padding is the gap between line and text;
+      // the line of a link sits that far left of it, so it is `gap` in from
+      // the wrap for top-level entries and one indent further for each level.
+      const gap = parseFloat(getComputedStyle(list).paddingLeft) || 0;
+      const items: { x: number; top: number; bottom: number }[] = [];
+      for (const a of links.values()) {
+        const r = a.getBoundingClientRect();
+        const top = r.top - box.top;
+        positions.set(a, { top, height: r.height });
+        items.push({ x: r.left - box.left - gap + 0.5, top, bottom: r.bottom - box.top });
+      }
+      if (items.length === 0) return;
+
+      let d = '';
+      let x = items[0]!.x;
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i]!;
+        if (i === 0) d += `M${it.x} ${it.top}`;
+        if (it.x !== x) {
+          d += ` L${it.x} ${it.top + BEND}`;
+          x = it.x;
+        }
+        const next = items[i + 1];
+        d += ` L${x} ${it.bottom - (next && next.x !== it.x ? BEND : 0)}`;
+      }
+      const width = Math.ceil(Math.max(...items.map((it) => it.x)) + 1);
+      const height = Math.ceil(items[items.length - 1]!.bottom);
+      const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 ${width} ${height}'><path d='${d}' stroke='black' stroke-width='1' fill='none'/></svg>`;
+      const mask = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+      track.style.width = `${width}px`;
+      track.style.height = `${height}px`;
+      track.style.maskImage = mask;
+      track.style.webkitMaskImage = mask;
+      placeActive();
+    };
+
+    const placeActive = () => {
+      if (!track || !activeBar) return;
+      const p = active && positions.get(active);
+      if (!p) {
+        activeBar.hidden = true;
+        return;
+      }
+      track.style.setProperty('--toc-active-top', `${p.top}px`);
+      track.style.setProperty('--toc-active-height', `${p.height}px`);
+      // Set while hidden: the first placement must not slide in from the top.
+      activeBar.hidden = false;
+    };
+
+    const revealInList = (link: HTMLAnchorElement) => {
+      if (scroller.scrollHeight <= scroller.clientHeight) return;
+      const r = link.getBoundingClientRect();
+      const n = scroller.getBoundingClientRect();
+      if (r.top >= n.top && r.bottom <= n.bottom) return;
+      scroller.scrollTo({
+        top: scroller.scrollTop + (r.top - n.top) - n.height / 2 + r.height / 2,
+        behavior: reducedMotion.matches ? 'auto' : 'smooth',
+      });
+    };
+
+    const setActive = (link: HTMLAnchorElement | undefined) => {
+      if (link === active) return;
+      active?.removeAttribute('aria-current');
+      active = link;
+      if (link && !positions.has(link)) drawTrack();
+      placeActive();
+      if (!link) return;
+      link.setAttribute('aria-current', 'location');
+      revealInList(link);
+    };
+
+    const lastLink = [...sectionOf.values()].at(-1);
+
+    const update = () => {
+      // The last section is often too short to reach the observed band.
+      if (atPageEnd() && lastLink) {
+        setActive(lastLink);
+        return;
+      }
+      for (const [block, link] of sectionOf) {
+        if (visible.has(block)) {
+          setActive(link);
+          return;
+        }
+      }
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) visible.add(entry.target);
+          else visible.delete(entry.target);
+        }
+        update();
+      },
+      { rootMargin: '-10% 0px -60% 0px' },
+    );
+    for (const block of sectionOf.keys()) observer.observe(block);
+    window.addEventListener('scroll', update, { passive: true });
+
+    // Fires once on observe(), which is the initial draw. Nothing is torn
+    // down on pagehide: a discarded document takes the observers with it, and
+    // a document restored from the back/forward cache must keep them.
+    const resizer = new ResizeObserver(drawTrack);
+    if (wrap) resizer.observe(wrap);
+  }
+
+  const nav = document.querySelector<HTMLElement>('nav[data-toc]');
+  const body = document.querySelector<HTMLElement>('.post-body');
+  if (nav && body) initToc(nav, body);
+</script>

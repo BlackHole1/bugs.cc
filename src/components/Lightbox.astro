@@ -1,0 +1,208 @@
+---
+/**
+ * Click-to-zoom for images inside the post body. Progressive: without JS the
+ * images are plain images. The script wraps every image that is displayed
+ * smaller than its intrinsic width (and is not already inside a link) in a
+ * real `<button>` (focusable and keyboard operable for free) which opens this
+ * native `<dialog>`: focus trap, Escape / backdrop / close button close it,
+ * focus returns to the button. Images that already fit at full size get no
+ * button, so "view full size" always shows something bigger; on narrow
+ * screens the dialog shows the natural size and pans. Images with an empty
+ * `alt` (most legacy posts) get `openHint` as the button's accessible name.
+ * No framework runtime: the script is ~1.5 KB and inlined by Astro.
+ */
+import X from '@lucide/astro/icons/x';
+
+export interface Props {
+  /** Images to make zoomable. */
+  selector?: string | undefined;
+  /** Accessible name of the dialog. */
+  label: string;
+  /** Accessible name of the zoom button when the image has no `alt`. */
+  openHint: string;
+  /** Accessible name of the close button. */
+  closeLabel: string;
+}
+
+const { selector = '.post-body img', label, openHint, closeLabel } = Astro.props;
+---
+
+<dialog
+  class="lightbox"
+  aria-label={label}
+  data-lightbox
+  data-selector={selector}
+  data-open-hint={openHint}
+>
+  <button type="button" class="lightbox-close" aria-label={closeLabel} data-lightbox-close>
+    <X size={24} aria-hidden="true" focusable="false" />
+  </button>
+  <img class="lightbox-img" alt="" />
+</dialog>
+
+<style>
+  .lightbox {
+    margin: auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    max-width: none;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .lightbox::backdrop {
+    background: rgba(0, 0, 0, 0.8);
+  }
+
+  .lightbox-img {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: calc(100vw - 2rem);
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
+    margin: 0;
+    border-radius: 4px;
+    background: var(--bg);
+  }
+
+  .lightbox-close {
+    position: fixed;
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(16, 16, 16, 0.85);
+    color: var(--heading);
+    cursor: pointer;
+  }
+
+  .lightbox-close:hover {
+    background: var(--border);
+  }
+
+  /* Narrow screens: the column is almost the viewport, so fitting the image
+     would show it at the same size again. Show the natural size and pan. */
+  @media (max-width: 799px) {
+    .lightbox {
+      max-width: 100vw;
+      max-height: 100vh;
+      max-height: 100dvh;
+      overflow: auto;
+    }
+
+    .lightbox-img {
+      max-width: none;
+      max-height: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .lightbox[open] {
+      animation: lightbox-in 0.15s ease-out;
+    }
+
+    @keyframes lightbox-in {
+      from {
+        opacity: 0;
+        transform: scale(0.96);
+      }
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+  }
+</style>
+
+<script>
+  /** True when the image is displayed narrower than its intrinsic width. */
+  function isReduced(source: HTMLImageElement): boolean {
+    const intrinsic = source.naturalWidth || Number(source.getAttribute('width')) || 0;
+    return intrinsic > source.getBoundingClientRect().width + 1;
+  }
+
+  function init(dialog: HTMLDialogElement): void {
+    const selector = dialog.dataset.selector ?? '.post-body img';
+    const openHint = dialog.dataset.openHint ?? '';
+    const img = dialog.querySelector<HTMLImageElement>('img');
+    const closeButton = dialog.querySelector<HTMLButtonElement>('[data-lightbox-close]');
+    if (!img || !closeButton) return;
+    const root = document.documentElement;
+    let trigger: HTMLElement | undefined;
+
+    const open = (button: HTMLButtonElement) => {
+      const source = button.querySelector('img');
+      if (!source || dialog.open) return;
+      trigger = button;
+      img.src = source.currentSrc || source.src;
+      img.alt = source.alt;
+      if (source.naturalWidth > 0) {
+        img.width = source.naturalWidth;
+        img.height = source.naturalHeight;
+      } else {
+        img.removeAttribute('width');
+        img.removeAttribute('height');
+      }
+      root.classList.add('lightbox-open');
+      dialog.showModal();
+    };
+
+    const unlock = () => root.classList.remove('lightbox-open');
+    // Escape fires `cancel` first; unlock right away, `close` follows.
+    dialog.addEventListener('cancel', unlock);
+    dialog.addEventListener('close', () => {
+      unlock();
+      img.removeAttribute('src');
+      trigger?.focus();
+      trigger = undefined;
+    });
+    // Clicks on the backdrop land on the dialog element itself.
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) dialog.close();
+    });
+    closeButton.addEventListener('click', () => dialog.close());
+
+    const wrap = (source: HTMLImageElement) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'zoomable';
+      button.setAttribute('aria-haspopup', 'dialog');
+      if (source.alt.trim() === '') button.setAttribute('aria-label', openHint);
+      source.replaceWith(button);
+      button.append(source);
+      button.addEventListener('click', () => open(button));
+    };
+    // Only images shown smaller than their intrinsic width get a button. Local
+    // images carry `width` (image-dimensions plugin) and can be decided before
+    // they load; remote ones are decided on `load`. All measurements happen
+    // before the first DOM change so that layout is computed once.
+    const reduced: HTMLImageElement[] = [];
+    for (const source of document.querySelectorAll<HTMLImageElement>(selector)) {
+      if (source.closest('a, button, dialog')) continue;
+      if (source.naturalWidth > 0 || source.hasAttribute('width')) {
+        if (isReduced(source)) reduced.push(source);
+      } else {
+        source.addEventListener('load', () => isReduced(source) && wrap(source), { once: true });
+      }
+    }
+    for (const source of reduced) wrap(source);
+  }
+
+  // Start after the first paint: the width measurements then read a layout
+  // the browser has already computed instead of forcing an early one.
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      for (const dialog of document.querySelectorAll<HTMLDialogElement>('dialog[data-lightbox]')) {
+        init(dialog);
+      }
+    });
+  });
+</script>
