@@ -62,9 +62,16 @@ export function absoluteUrl(path: string, site: URL | string = SITE.url): string
 /**
  * X "post" intent with `text` pre-filled: the "Reply to this post on X" link
  * at the end of a post (the text is `post.replyText` of the UI strings).
+ *
+ * The path keeps a trailing slash on purpose. AdGuard's "Social media" filter
+ * (also shipped in uBlock Origin as "AdGuard Social" and bundled into AdGuard
+ * Annoyances) hides every `a[href^="https://x.com/intent/post?"]` on every
+ * site, which makes the link vanish in browsers running that list. X serves
+ * `/intent/post/?text=` identically (compose dialog with the text filled in),
+ * while the prefix rule does not match it.
  */
 export function xIntentUrl(text: string): string {
-  return `https://x.com/intent/post?text=${encodeURIComponent(text)}`;
+  return `https://x.com/intent/post/?text=${encodeURIComponent(text)}`;
 }
 
 /**
