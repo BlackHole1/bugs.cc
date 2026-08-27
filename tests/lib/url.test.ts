@@ -28,8 +28,13 @@ describe('url helpers', () => {
 
   it('X intent encodes the pre-filled text', () => {
     expect(xIntentUrl("Reading @Free_BlackHole's https://bugs.cc/posts/a/\n\nI think...")).toBe(
-      "https://x.com/intent/post?text=Reading%20%40Free_BlackHole's%20https%3A%2F%2Fbugs.cc%2Fposts%2Fa%2F%0A%0AI%20think...",
+      "https://x.com/intent/post/?text=Reading%20%40Free_BlackHole's%20https%3A%2F%2Fbugs.cc%2Fposts%2Fa%2F%0A%0AI%20think...",
     );
+  });
+
+  it('X intent path does not match the AdGuard social filter that hides share links', () => {
+    // `##a[href^="https://x.com/intent/post?"]` in AdGuard's "Social media" list.
+    expect(xIntentUrl('x')).not.toMatch(/^https:\/\/x\.com\/intent\/post\?/);
   });
 });
 
