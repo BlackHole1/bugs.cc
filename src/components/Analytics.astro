@@ -41,12 +41,14 @@ const uiHost = JSON.stringify(SITE.posthog.uiHost);
 // `defaults: '2026-05-30'` is what the PostHog app recommends today (page
 // views also on history changes, localhost is an internal user, extras are
 // injected into <head>); `person_profiles` is the default, spelled out.
-// Session replay and dead-click autocapture stay off whatever the project
-// settings say: each would fetch another script on every page
-// (`posthog-recorder.js`, ~100 KB, and `dead-clicks-autocapture.js`), and
-// both file names are blocked outright by AdGuard's generic tracking rules.
-// The core (page views, `/e/`, `/flags/`) needs neither.
-const loader = `(function(){var api=${apiHost};var init=function(){window.posthog&&posthog.init(${token},{api_host:api,ui_host:${uiHost},defaults:'2026-05-30',person_profiles:'identified_only',disable_session_recording:true,capture_dead_clicks:false})};var inject=function(){var s=document.createElement('script');s.async=true;s.crossOrigin='anonymous';s.src=api+'/static/array.js';s.onload=init;document.head.appendChild(s)};var shown=function(){document.prerendering?document.addEventListener('prerenderingchange',inject,{once:true}):inject()};var idle=function(){'requestIdleCallback'in window?requestIdleCallback(shown,{timeout:3000}):setTimeout(shown,0)};document.readyState==='complete'?idle():addEventListener('load',idle,{once:true})})();`;
+// Session replay, dead-click autocapture and heatmaps stay off whatever the
+// project settings say: the first two would each fetch another script on
+// every page (`posthog-recorder.js`, ~100 KB, and `dead-clicks-autocapture.js`),
+// heatmaps load `dead-clicks-autocapture.js` as well (the SDK's heatmap
+// tracker is built on it) and add mousemove listeners, and both file names
+// are blocked outright by AdGuard's generic tracking rules. The core (page
+// views, `/e/`, `/flags/`) needs none of them.
+const loader = `(function(){var api=${apiHost};var init=function(){window.posthog&&posthog.init(${token},{api_host:api,ui_host:${uiHost},defaults:'2026-05-30',person_profiles:'identified_only',disable_session_recording:true,capture_dead_clicks:false,capture_heatmaps:false})};var inject=function(){var s=document.createElement('script');s.async=true;s.crossOrigin='anonymous';s.src=api+'/static/array.js';s.onload=init;document.head.appendChild(s)};var shown=function(){document.prerendering?document.addEventListener('prerenderingchange',inject,{once:true}):inject()};var idle=function(){'requestIdleCallback'in window?requestIdleCallback(shown,{timeout:3000}):setTimeout(shown,0)};document.readyState==='complete'?idle():addEventListener('load',idle,{once:true})})();`;
 ---
 
 {!import.meta.env.DEV && <script is:inline data-analytics="posthog" set:html={loader} />}
