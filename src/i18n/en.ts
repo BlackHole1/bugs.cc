@@ -21,6 +21,7 @@ export const en: UIStrings = {
     languageSwitch: 'Switch language',
     noTranslation: 'No Chinese version of this page',
     externalLink: 'opens in a new tab',
+    themeAuto: 'Follow the system theme',
     themeLight: 'Switch to light theme',
     themeDark: 'Switch to dark theme',
   },

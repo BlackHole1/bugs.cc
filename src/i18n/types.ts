@@ -46,6 +46,7 @@ export interface UIStrings {
     /** `(opens in a new tab)` hint, also appended to external links in prose. */
     externalLink: string;
     /** Accessible names of the theme toggle: what pressing it switches to. */
+    themeAuto: string;
     themeLight: string;
     themeDark: string;
   };

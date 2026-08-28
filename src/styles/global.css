@@ -1,9 +1,10 @@
 /* Design tokens. Two neutral ladders (no blue or purple tint) with one green
    accent, picked by `color-scheme` through `light-dark()`: the light ladder is
    near-white, the dark one near-black. `<html data-theme>` (set before first
-   paint by the inline script in Base.astro, from localStorage or the OS
-   preference; toggled by ThemeToggle.astro) pins the scheme; without
-   JavaScript `color-scheme: light dark` follows the OS. Every text token is at
+   paint by the inline script in Base.astro from localStorage; cycled by
+   ThemeToggle.astro) pins the scheme when `light` or `dark`; `auto` (the
+   default) and no JavaScript at all follow the OS through
+   `color-scheme: light dark`. Every text token is at
    or above WCAG 4.5:1 on the surfaces it sits on (computed 2026-08-27):
    light: text 16.1:1, heading 18.4:1, link 5.2:1, visited 5.3:1, muted 6.2:1
    (5.8:1 on --zebra); dark: text 12.8:1, heading 17:1, link 8.7:1, visited
@@ -297,9 +298,20 @@ html:lang(zh) :is(em, i, cite, dfn, blockquote, address) {
 }
 
 /* Theme toggle (ThemeToggle.astro): a nav-sized button showing the icon of
-   the scheme it switches to (moon on a light page, sun on a dark one). It
-   needs JavaScript, which also sets `data-theme`; without it nothing is
-   rendered and the page follows the OS through `color-scheme`. */
+   the current state (sun-and-moon for `auto`, sun for `light`, moon for
+   `dark`). It needs JavaScript, which also sets `data-theme`; without it
+   nothing is rendered and the page follows the OS through `color-scheme`.
+
+   The three icons share one grid cell and the state is a transition: the
+   current icon sits upright, the other two are faded, shrunk and turned a
+   quarter, one each way. Which way follows the cycle auto, light, dark,
+   auto: the icon that comes next in it waits at +90deg, the previous one at
+   -90deg, so when the button advances the old icon turns out one way and
+   the new one turns in from the other, like a wheel, and going the other
+   way round (the cycle runs backwards on a light OS) the wheel turns
+   backwards. Nothing animates on first paint: `data-theme` is set before
+   the first style computation. The global reduced-motion rule above
+   flattens the transition to an instant swap. */
 .theme-toggle {
   border: 0;
   background: none;
@@ -308,19 +320,56 @@ html:lang(zh) :is(em, i, cite, dfn, blockquote, address) {
   cursor: pointer;
 }
 
-.theme-toggle .nav-icon {
+.theme-toggle:hover {
+  color: var(--heading);
+}
+
+:root:not([data-theme]) .theme-toggle {
+  display: none;
+}
+
+.theme-toggle-icons {
+  display: grid;
   width: 1.1em;
   height: 1.1em;
 }
 
-:root:not([data-theme]) .theme-toggle,
-:root[data-theme='light'] .theme-toggle-sun,
-:root[data-theme='dark'] .theme-toggle-moon {
-  display: none;
+.theme-toggle-icons .nav-icon {
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
+  transition:
+    opacity 0.25s,
+    transform 0.35s cubic-bezier(0.2, 0, 0, 1);
 }
 
-.theme-toggle:hover {
-  color: var(--heading);
+/* Optical centring: the ink of `sun-moon` (moon body lower left, rays upper
+   right) and of `moon` sits below and left of the box centre, by 1.3 and 0.8
+   of the 24 viewBox units (measured from rendered pixels), so the icon
+   seemed to jump when the state changed. `translate` composes with the
+   `transform` of the transition and stays out of it. */
+.theme-toggle-auto {
+  translate: 5% -5%;
+}
+
+.theme-toggle-moon {
+  translate: 3% -3%;
+}
+
+/* The two icons that are not the current state: the next one in the cycle
+   waits a quarter turn clockwise, the previous one counter-clockwise. */
+:root[data-theme='auto'] .theme-toggle-sun,
+:root[data-theme='light'] .theme-toggle-moon,
+:root[data-theme='dark'] .theme-toggle-auto {
+  opacity: 0;
+  transform: rotate(90deg) scale(0.4);
+}
+
+:root[data-theme='auto'] .theme-toggle-moon,
+:root[data-theme='light'] .theme-toggle-auto,
+:root[data-theme='dark'] .theme-toggle-sun {
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.4);
 }
 
 main {
