@@ -1,23 +1,35 @@
 ---
 import Moon from '@lucide/astro/icons/moon';
 import Sun from '@lucide/astro/icons/sun';
+import SunMoon from '@lucide/astro/icons/sun-moon';
 import { useTranslations, type Lang } from '@/i18n';
 import { SITE } from '@/lib/site';
 
 /**
- * Light / dark switch in the nav. Two states, not three (Lea Verou, "Dark
- * mode toggles: two states are enough"): the button shows the scheme it
- * switches to, the choice is stored in `localStorage.theme` and applied
- * before first paint by the inline script in Base.astro, which also picks
- * the OS scheme when nothing is stored. Without JavaScript the button is
- * hidden (global.css: `:root:not([data-theme]) .theme-toggle`) and the page
- * follows the OS through `color-scheme: light dark`.
+ * Theme switch in the nav with three states, `auto` (the default: follow
+ * the OS), `light` and `dark`. The button shows the icon of the current
+ * state (Lucide `sun-moon`, the icon its library tags "system theme", then
+ * sun, moon), turning from one to the next in CSS, and its accessible name
+ * says what the next press does. The choice is stored in
+ * `localStorage.theme` as `light` or `dark`, and removed for `auto`; the
+ * inline script in Base.astro reads it before first paint and sets
+ * `data-theme` on `<html>`, `auto` when nothing valid is stored. Without
+ * JavaScript the button is hidden (global.css:
+ * `:root:not([data-theme]) .theme-toggle`) and the page follows the OS
+ * through `color-scheme: light dark`.
+ *
+ * Order of the cycle, relative to the OS scheme so that the first press
+ * always changes the page: `auto` -> the scheme the OS is not showing ->
+ * the OS scheme -> `auto`. On a dark OS that is auto, light, dark, auto; on
+ * a light one auto, dark, light, auto.
  *
  * The script below (inlined by Astro) does the rest: pressing the button
- * flips the attribute, the stored value and `theme-color`; a change of the
- * OS scheme is followed while nothing is stored; a page shown from the
- * back/forward cache or the Speculation Rules prerender (which ran the head
- * script earlier, possibly with a stale value) re-reads the stored theme.
+ * advances the state, stores it and updates the attribute, the name and
+ * `theme-color`; a change of the OS scheme is followed (`theme-color` and
+ * the name depend on it); another tab's choice is picked up through the
+ * `storage` event; a page shown from the back/forward cache or the
+ * Speculation Rules prerender (which ran the head script earlier, possibly
+ * with a stale value) re-reads the stored theme.
  */
 export interface Props {
   lang: Lang;
@@ -31,25 +43,42 @@ const t = useTranslations(lang);
   type="button"
   class="nav-link theme-toggle"
   data-theme-toggle
+  data-label-auto={t.nav.themeAuto}
   data-label-light={t.nav.themeLight}
   data-label-dark={t.nav.themeDark}
   data-color-light={SITE.themeColor.light}
   data-color-dark={SITE.themeColor.dark}
   aria-label={t.nav.themeDark}
 >
-  <Sun class="nav-icon theme-toggle-sun" size={16} aria-hidden="true" focusable="false" />
-  <Moon class="nav-icon theme-toggle-moon" size={16} aria-hidden="true" focusable="false" />
+  <!-- The three icons share one grid cell; global.css fades and turns them (`.theme-toggle-icons`). -->
+  <span class="theme-toggle-icons" aria-hidden="true">
+    <SunMoon class="nav-icon theme-toggle-auto" size={16} focusable="false" />
+    <Sun class="nav-icon theme-toggle-sun" size={16} focusable="false" />
+    <Moon class="nav-icon theme-toggle-moon" size={16} focusable="false" />
+  </span>
 </button>
 
 <script>
-  type Theme = 'light' | 'dark';
+  type Scheme = 'light' | 'dark';
+  type Theme = 'auto' | Scheme;
 
-  const stored = (): Theme | undefined => {
+  const isScheme = (value: unknown): value is Scheme => value === 'light' || value === 'dark';
+
+  /** The stored choice; `auto` when there is none or storage is unavailable. */
+  const stored = (): Theme => {
     try {
       const value = localStorage.getItem('theme');
-      return value === 'light' || value === 'dark' ? value : undefined;
+      return isScheme(value) ? value : 'auto';
     } catch {
-      return undefined;
+      return 'auto';
+    }
+  };
+  const store = (theme: Theme) => {
+    try {
+      if (theme === 'auto') localStorage.removeItem('theme');
+      else localStorage.setItem('theme', theme);
+    } catch {
+      // Private mode with storage disabled: the choice lasts for this page.
     }
   };
 
@@ -59,31 +88,41 @@ const t = useTranslations(lang);
     const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     const media = matchMedia('(prefers-color-scheme: dark)');
 
+    const os = (): Scheme => (media.matches ? 'dark' : 'light');
+    /** The state on the page now (kept even when storage is disabled). */
+    const current = (): Theme => (isScheme(root.dataset.theme) ? root.dataset.theme : 'auto');
+    /** auto -> the scheme the OS is not showing -> the OS scheme -> auto. */
+    const next = (theme: Theme): Theme => {
+      if (theme === 'auto') return os() === 'dark' ? 'light' : 'dark';
+      return theme === os() ? 'auto' : os();
+    };
+    const label = (theme: Theme) => {
+      const { labelAuto, labelLight, labelDark } = button.dataset;
+      return (theme === 'auto' ? labelAuto : theme === 'dark' ? labelDark : labelLight) ?? '';
+    };
+
     const apply = (theme: Theme) => {
       root.dataset.theme = theme;
-      // The label names the scheme the next press switches to.
-      button.setAttribute(
-        'aria-label',
-        (theme === 'dark' ? button.dataset.labelLight : button.dataset.labelDark) ?? '',
-      );
+      // The name says what the next press does.
+      button.setAttribute('aria-label', label(next(theme)));
       if (meta) {
+        const scheme = theme === 'auto' ? os() : theme;
         meta.content =
-          (theme === 'dark' ? button.dataset.colorDark : button.dataset.colorLight) ?? '';
+          (scheme === 'dark' ? button.dataset.colorDark : button.dataset.colorLight) ?? '';
       }
     };
-    const sync = () => apply(stored() ?? (media.matches ? 'dark' : 'light'));
+    const sync = () => apply(stored());
 
     button.addEventListener('click', () => {
-      const next: Theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
-      try {
-        localStorage.setItem('theme', next);
-      } catch {
-        // Private mode with storage disabled: the choice lasts for this page.
-      }
-      apply(next);
+      const theme = next(current());
+      store(theme);
+      apply(theme);
     });
-    media.addEventListener('change', () => {
-      if (!stored()) sync();
+    // The OS scheme decides the page while `auto` and the order of the cycle
+    // (so the name) always; re-apply the state the page has.
+    media.addEventListener('change', () => apply(current()));
+    window.addEventListener('storage', (event) => {
+      if (event.key === null || event.key === 'theme') sync();
     });
     document.addEventListener('prerenderingchange', sync);
     window.addEventListener('pageshow', (event) => {

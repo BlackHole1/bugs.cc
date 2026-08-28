@@ -21,6 +21,7 @@ export const zh: UIStrings = {
     languageSwitch: '切换语言',
     noTranslation: '本页没有英文版',
     externalLink: '在新标签页打开',
+    themeAuto: '跟随系统主题',
     themeLight: '切换到浅色主题',
     themeDark: '切换到深色主题',
   },

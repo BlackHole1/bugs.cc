@@ -59,18 +59,20 @@ const switchHref = alternates[otherLang(lang)];
 const switchFallback = switchHref === undefined && alternates[lang] !== undefined;
 
 /**
- * Theme, before first paint: `data-theme` on `<html>` from localStorage or
- * the OS preference, and the matching `theme-color`. Kept as one statement
- * with no dependencies so a syntax error in a bundle can never leave the
- * page in the wrong scheme; ThemeToggle.astro owns the rest (the button, OS
- * changes while nothing is stored, prerendered and restored pages).
+ * Theme, before first paint: `data-theme` on `<html>` (`auto`, `light` or
+ * `dark`) from `localStorage.theme`, `auto` when nothing valid is stored, and
+ * the `theme-color` of the scheme that results (`auto` follows the OS). Kept
+ * as one statement with no dependencies so a syntax error in a bundle can
+ * never leave the page in the wrong scheme; ThemeToggle.astro owns the rest
+ * (the button, OS changes while `auto`, prerendered and restored pages).
  */
 const themeScript =
   `(function(){var t;try{t=localStorage.getItem('theme')}catch(e){}` +
-  `if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';` +
+  `if(t!=='light'&&t!=='dark')t='auto';` +
   `document.documentElement.dataset.theme=t;` +
+  `var d=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);` +
   `var m=document.querySelector('meta[name=theme-color]');` +
-  `if(m)m.content=t==='dark'?${JSON.stringify(SITE.themeColor.dark)}:${JSON.stringify(SITE.themeColor.light)}})();`;
+  `if(m)m.content=d?${JSON.stringify(SITE.themeColor.dark)}:${JSON.stringify(SITE.themeColor.light)}})();`;
 ---
 
 <!doctype html>
