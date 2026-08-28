@@ -21,7 +21,7 @@ import {
 } from '@/lib/posts';
 import { SITE } from '@/lib/site';
 import { buildToc, shouldRenderToc } from '@/lib/toc';
-import { absoluteUrl, postMarkdownUrl, xIntentUrl } from '@/lib/url';
+import { absoluteUrl, homeUrl, postMarkdownUrl, postsIndexUrl, xIntentUrl } from '@/lib/url';
 import type { ReadingTime } from '@/plugins/reading-time';
 
 export interface Props {
@@ -59,6 +59,8 @@ const hasFootnotes =
 
 const site = Astro.site ?? SITE.url;
 const url = absoluteUrl(path, site);
+// `wordCount` only where the count is words (English); the Chinese count is
+// characters. `timeRequired` is the reading time as an ISO 8601 duration.
 const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'BlogPosting',
@@ -66,12 +68,37 @@ const jsonLd = {
   description,
   datePublished: toIsoWithOffset(post.data.date),
   dateModified: toIsoWithOffset(post.data.updated ?? post.data.date),
-  author: { '@type': 'Person', name: SITE.author, url: SITE.url, email: SITE.email },
+  author: {
+    '@type': 'Person',
+    '@id': absoluteUrl('/#author', site),
+    name: SITE.author,
+    url: SITE.url,
+    email: SITE.email,
+    sameAs: SITE.profiles,
+  },
   inLanguage: t.htmlLang,
   url,
   mainEntityOfPage: { '@type': 'WebPage', '@id': url },
   image: absoluteUrl(SITE.ogImage, site),
   keywords: post.data.tags.join(', '),
+  ...(readingTime?.lang === 'en' ? { wordCount: readingTime.count } : {}),
+  ...(readingTime ? { timeRequired: `PT${readingTime.minutes}M` } : {}),
+  isAccessibleForFree: true,
+  license: SITE.license.url,
+};
+const breadcrumbs = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: t.nav.home, item: absoluteUrl(homeUrl(lang), site) },
+    {
+      '@type': 'ListItem',
+      position: 2,
+      name: t.nav.posts,
+      item: absoluteUrl(postsIndexUrl(lang), site),
+    },
+    { '@type': 'ListItem', position: 3, name: post.data.title },
+  ],
 };
 ---
 
@@ -89,7 +116,8 @@ const jsonLd = {
   markdown={markdownPath}
 >
   <JsonLd slot="head" data={jsonLd} />
-  <article class="post" aria-labelledby="post-title">
+  <JsonLd slot="head" data={breadcrumbs} />
+  <article class="post" aria-labelledby="post-title" data-pagefind-body>
     <h1 id="post-title" class="post-title">{post.data.title}</h1>
     <PostMeta
       lang={lang}
@@ -102,7 +130,7 @@ const jsonLd = {
     <div class="post-body">
       <Content />
     </div>
-    <p class="post-reply">
+    <p class="post-actions" data-pagefind-ignore>
       <a
         href={xIntentUrl(t.post.replyText(SITE.twitter, url))}
         target="_blank"
@@ -114,7 +142,6 @@ const jsonLd = {
           <Forward class="reply-icon" size={16} aria-hidden="true" focusable="false" />
         </span>
       </a>
-      {' | '}
       <a href={markdownPath}><span class="link-text">{t.post.viewMarkdown}</span></a>
     </p>
   </article>

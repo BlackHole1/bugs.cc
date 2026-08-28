@@ -1,8 +1,10 @@
 ---
 import Rss from '@lucide/astro/icons/rss';
+import Search from '@lucide/astro/icons/search';
 import LanguageSwitch from '@/components/LanguageSwitch.astro';
+import ThemeToggle from '@/components/ThemeToggle.astro';
 import { useTranslations, type Lang } from '@/i18n';
-import { feedUrl, homeUrl, postsIndexUrl, projectsIndexUrl } from '@/lib/url';
+import { feedUrl, homeUrl, postsIndexUrl, projectsIndexUrl, searchUrl } from '@/lib/url';
 
 export interface Props {
   lang: Lang;
@@ -55,6 +57,17 @@ const current = (href: string) => (currentPath === href ? 'page' : undefined);
     <li>
       <a
         class="nav-link"
+        href={searchUrl(lang)}
+        aria-current={current(searchUrl(lang))}
+        data-astro-prefetch="viewport"
+      >
+        <Search class="nav-icon" size={16} aria-hidden="true" focusable="false" />
+        <span class="link-text">{t.nav.search}</span>
+      </a>
+    </li>
+    <li>
+      <a
+        class="nav-link"
         href={feedUrl(lang)}
         type="application/rss+xml"
         data-astro-prefetch="false"
@@ -65,6 +78,9 @@ const current = (href: string) => (currentPath === href ? 'page' : undefined);
     </li>
     <li>
       <LanguageSwitch lang={lang} href={switchHref} fallback={switchFallback} />
+    </li>
+    <li>
+      <ThemeToggle lang={lang} />
     </li>
   </ul>
 </nav>

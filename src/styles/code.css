@@ -15,7 +15,7 @@ pre {
 :not(pre) > code {
   color: var(--inline-code);
   background: var(--inline-code-bg);
-  font-size: 0.85em;
+  font-size: 0.875em;
   padding: 0.1em 0.35em;
   border-radius: 4px;
   overflow-wrap: anywhere;
@@ -24,10 +24,11 @@ pre {
 /* Plain <pre> blocks that were not handled by Expressive Code. */
 pre:not(.expressive-code pre) {
   background: var(--code-bg);
-  color: #f8f8f2;
-  font-size: 0.85rem;
+  color: var(--text);
+  font-size: 0.84375rem;
   line-height: 1.6;
-  padding: 1em;
+  padding: 1em 1.25rem;
+  border: 1px solid var(--border);
   border-radius: 6px;
   overflow-x: auto;
   max-width: 100%;

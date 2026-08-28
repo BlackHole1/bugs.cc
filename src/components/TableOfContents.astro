@@ -6,11 +6,10 @@ import type { TocEntry } from '@/lib/toc';
 /**
  * Collapsible table of contents: `<nav>` + `<details>`/`<summary>` so it works
  * with zero JS. Rendered open; a tiny inline script closes it before first
- * paint on narrow screens (< 1400px), where it sits above the body as a
+ * paint on narrow screens (< 1220px), where it sits above the body as a
  * "Table of contents" disclosure. On wide screens it is fixed at the left
- * edge of the viewport (antfu.me style): only the list icon is visible, and
- * the entries fade in when the pointer enters the left margin strip or focus
- * moves into the list (see typography.css, which owns the same breakpoint).
+ * edge of the viewport with the list always visible (see typography.css,
+ * which owns the same breakpoint).
  * A bundled script highlights the active heading and draws the "circuit"
  * track next to the list (see below). The `<nav>` is named by the summary
  * text (`aria-labelledby`) so screen readers do not get "Table of contents"
@@ -39,7 +38,7 @@ function renderList(items: TocEntry[]): string {
 }
 ---
 
-<nav class="toc" aria-labelledby="toc-heading" data-toc>
+<nav class="toc" aria-labelledby="toc-heading" data-toc data-pagefind-ignore>
   <details id="toc" open>
     <summary>
       <TocIcon class="toc-icon" size={20} aria-hidden="true" focusable="false" />
@@ -59,7 +58,7 @@ function renderList(items: TocEntry[]): string {
 <script is:inline>
   // Collapsed by default on narrow screens (same breakpoint as the fixed TOC
   // in typography.css); runs before the body is painted.
-  if (!matchMedia('(min-width: 1400px)').matches) document.getElementById('toc').open = false;
+  if (!matchMedia('(min-width: 1220px)').matches) document.getElementById('toc').open = false;
 </script>
 
 <script>

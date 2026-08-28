@@ -1,0 +1,94 @@
+---
+import Moon from '@lucide/astro/icons/moon';
+import Sun from '@lucide/astro/icons/sun';
+import { useTranslations, type Lang } from '@/i18n';
+import { SITE } from '@/lib/site';
+
+/**
+ * Light / dark switch in the nav. Two states, not three (Lea Verou, "Dark
+ * mode toggles: two states are enough"): the button shows the scheme it
+ * switches to, the choice is stored in `localStorage.theme` and applied
+ * before first paint by the inline script in Base.astro, which also picks
+ * the OS scheme when nothing is stored. Without JavaScript the button is
+ * hidden (global.css: `:root:not([data-theme]) .theme-toggle`) and the page
+ * follows the OS through `color-scheme: light dark`.
+ *
+ * The script below (inlined by Astro) does the rest: pressing the button
+ * flips the attribute, the stored value and `theme-color`; a change of the
+ * OS scheme is followed while nothing is stored; a page shown from the
+ * back/forward cache or the Speculation Rules prerender (which ran the head
+ * script earlier, possibly with a stale value) re-reads the stored theme.
+ */
+export interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+---
+
+<button
+  type="button"
+  class="nav-link theme-toggle"
+  data-theme-toggle
+  data-label-light={t.nav.themeLight}
+  data-label-dark={t.nav.themeDark}
+  data-color-light={SITE.themeColor.light}
+  data-color-dark={SITE.themeColor.dark}
+  aria-label={t.nav.themeDark}
+>
+  <Sun class="nav-icon theme-toggle-sun" size={16} aria-hidden="true" focusable="false" />
+  <Moon class="nav-icon theme-toggle-moon" size={16} aria-hidden="true" focusable="false" />
+</button>
+
+<script>
+  type Theme = 'light' | 'dark';
+
+  const stored = (): Theme | undefined => {
+    try {
+      const value = localStorage.getItem('theme');
+      return value === 'light' || value === 'dark' ? value : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
+  const button = document.querySelector<HTMLButtonElement>('[data-theme-toggle]');
+  if (button) {
+    const root = document.documentElement;
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    const media = matchMedia('(prefers-color-scheme: dark)');
+
+    const apply = (theme: Theme) => {
+      root.dataset.theme = theme;
+      // The label names the scheme the next press switches to.
+      button.setAttribute(
+        'aria-label',
+        (theme === 'dark' ? button.dataset.labelLight : button.dataset.labelDark) ?? '',
+      );
+      if (meta) {
+        meta.content =
+          (theme === 'dark' ? button.dataset.colorDark : button.dataset.colorLight) ?? '';
+      }
+    };
+    const sync = () => apply(stored() ?? (media.matches ? 'dark' : 'light'));
+
+    button.addEventListener('click', () => {
+      const next: Theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      try {
+        localStorage.setItem('theme', next);
+      } catch {
+        // Private mode with storage disabled: the choice lasts for this page.
+      }
+      apply(next);
+    });
+    media.addEventListener('change', () => {
+      if (!stored()) sync();
+    });
+    document.addEventListener('prerenderingchange', sync);
+    window.addEventListener('pageshow', (event) => {
+      if (event.persisted) sync();
+    });
+    sync();
+  }
+</script>

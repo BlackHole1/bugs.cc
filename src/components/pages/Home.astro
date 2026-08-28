@@ -1,11 +1,13 @@
 ---
 import { render } from 'astro:content';
+import JsonLd from '@/components/JsonLd.astro';
 import PostList from '@/components/PostList.astro';
 import Base from '@/layouts/Base.astro';
 import { useTranslations, type Lang } from '@/i18n';
 import { SITE_TIME_ZONE, toIsoWithOffset } from '@/lib/dates';
 import { getPage, getPosts } from '@/lib/posts';
-import { homeUrl, postsIndexUrl } from '@/lib/url';
+import { SITE } from '@/lib/site';
+import { absoluteUrl, homeUrl, postsIndexUrl } from '@/lib/url';
 
 export interface Props {
   lang: Lang;
@@ -16,6 +18,25 @@ const t = useTranslations(lang);
 const page = await getPage(lang, 'home');
 const recent = (await getPosts(lang)).slice(0, 5);
 const description = page?.data.description?.trim() || t.siteDescription;
+
+// The home page is the author's profile (Google's ProfilePage markup): the
+// Person every post's JSON-LD `author` points at by `@id`.
+const site = Astro.site ?? SITE.url;
+const profile = {
+  '@context': 'https://schema.org',
+  '@type': 'ProfilePage',
+  mainEntity: {
+    '@type': 'Person',
+    '@id': absoluteUrl('/#author', site),
+    name: SITE.author,
+    alternateName: SITE.github,
+    description,
+    url: SITE.url,
+    email: SITE.email,
+    image: absoluteUrl(SITE.avatar, site),
+    sameAs: SITE.profiles,
+  },
+};
 
 /**
  * The bio comes from `pages/<lang>/home.md` (no avatar here: the site logo in
@@ -56,6 +77,7 @@ if (html !== undefined) {
   path={homeUrl(lang)}
   alternates={{ en: homeUrl('en'), zh: homeUrl('zh') }}
 >
+  <JsonLd slot="head" data={profile} />
   <h1 class="visually-hidden">{t.siteTitle}</h1>
   <section class="bio" aria-labelledby="bio-heading">
     <h2 id="bio-heading" class="visually-hidden">{t.home.aboutHeading}</h2>

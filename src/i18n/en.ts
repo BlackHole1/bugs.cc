@@ -16,10 +16,13 @@ export const en: UIStrings = {
     home: 'Home',
     posts: 'Posts',
     projects: 'Projects',
+    search: 'Search',
     rss: 'RSS',
     languageSwitch: 'Switch language',
     noTranslation: 'No Chinese version of this page',
     externalLink: 'opens in a new tab',
+    themeLight: 'Switch to light theme',
+    themeDark: 'Switch to dark theme',
   },
 
   home: {
@@ -39,6 +42,18 @@ export const en: UIStrings = {
     title: 'Projects',
     description: 'Open source projects Kevin Cui builds and maintains.',
     intro: 'Open source projects I build and maintain.',
+  },
+
+  search: {
+    title: 'Search',
+    description: "Search the posts on Kevin Cui's Blog.",
+    label: 'Search posts',
+    placeholder: 'Search posts',
+    results: '{n} results for “{q}”',
+    noResults: 'No results for “{q}”',
+    loading: 'Searching…',
+    error: 'Search is unavailable right now.',
+    needsJs: 'Search needs JavaScript.',
   },
 
   tags: {

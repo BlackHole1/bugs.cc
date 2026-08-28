@@ -28,8 +28,7 @@ import type { Lang } from '@/i18n/types';
  * changes. Within a group the array
  * order is the display order (curated, roughly most active first).
  * Deliberately minimal fields: a name, the repository URL and a one-line
- * description per language; no images, dates or tech tags (see
- * docs/ARCHITECTURE.md, deviation 64).
+ * description per language; no images, dates or tech tags.
  */
 export interface Project {
   /** Repository name, the visible link text. */

@@ -1,5 +1,7 @@
 /* Text, headings, links, lists, tables, blockquotes, images, page blocks. */
 
+/* Three visible levels (h1 title, h2, h3; h4+ are body-sized bold), each
+   step about 1.2x, more space above a heading than below it. */
 h1,
 h2,
 h3,
@@ -11,34 +13,42 @@ h6 {
   line-height: 1.3;
   margin: 1.6em 0 0.6em;
   scroll-margin-top: 1rem;
+  text-wrap: balance;
 }
 
 h1 {
-  font-size: 2rem;
+  font-size: 2.125rem;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
   margin: 0.5em 0;
 }
 
 h2 {
-  font-size: 1.4rem;
+  font-size: 1.5rem;
+  margin-top: 1.8em;
 }
 
 h3 {
-  font-size: 1.2rem;
+  font-size: 1.25rem;
 }
 
 h4,
 h5,
 h6 {
-  font-size: 1rem;
+  font-size: 1.0625rem;
 }
 
 @media (max-width: 639px) {
   h1 {
-    font-size: 1.6rem;
+    font-size: 1.75rem;
   }
 
   h2 {
-    font-size: 1.3rem;
+    font-size: 1.375rem;
+  }
+
+  h3 {
+    font-size: 1.1875rem;
   }
 }
 
@@ -122,6 +132,8 @@ a:hover .link-text {
 
 p {
   margin: 0 0 1em;
+  /* Fewer orphans and rivers; a no-op where unsupported. */
+  text-wrap: pretty;
 }
 
 ul,
@@ -142,9 +154,8 @@ hr {
 blockquote {
   margin: 1em 0;
   padding: 0 1em;
-  border-left: 5px solid var(--quote-border);
+  border-left: 4px solid var(--quote-border);
   color: var(--muted);
-  font-style: italic;
 }
 
 blockquote p:last-child {
@@ -241,6 +252,13 @@ time {
   font-variant-numeric: tabular-nums;
 }
 
+/* Post lists (PostList.astro) and tag clouds are lists of links: the row is
+   the affordance, so the underline appears on hover only. */
+.post-list a,
+.tag-cloud a {
+  --underline-rest: transparent;
+}
+
 /* Long URLs and identifiers in prose must not widen the page. */
 .post-body,
 .bio {
@@ -274,7 +292,7 @@ iframe {
   margin-top: 2.5rem;
   padding-top: 1rem;
   border-top: 1px solid var(--border);
-  font-size: 0.9rem;
+  font-size: 0.9375rem;
 }
 
 .footnotes li {
@@ -295,10 +313,10 @@ a[data-footnote-ref].is-active {
   background-color: var(--inline-code-bg);
 }
 
-/* Sidenotes (>= 1440px; Sidenotes.astro, tokens in global.css). The same
+/* Sidenotes (>= 1280px; Sidenotes.astro, tokens in global.css). The same
    section becomes an absolutely positioned column to the right of the
-   reading column (LessWrong / Google Docs comment model, see
-   docs/ARCHITECTURE.md deviation 83). Without JavaScript the notes stack from
+   reading column (LessWrong / Google Docs comment model). Without
+   JavaScript the notes stack from
    the top of the column in order, all visible. Once the script has measured
    them (`data-sidenotes` on the section; `init` while that is in progress)
    each note is positioned at the height of its reference, pushed down so notes never overlap, and shown
@@ -306,7 +324,7 @@ a[data-footnote-ref].is-active {
    targeted note is always shown and pinned next to its reference. A note
    taller than 60vh is clipped with a fade (`is-clipped`) until it is active.
    Print and narrow screens keep the list at the end of the post. */
-@media (min-width: 1440px) {
+@media (min-width: 1280px) {
   .post-body {
     position: relative;
   }
@@ -320,7 +338,7 @@ a[data-footnote-ref].is-active {
     margin: 0;
     padding: 0;
     border: 0;
-    font-size: 0.8rem;
+    font-size: 0.8125rem;
     line-height: 1.5;
     color: var(--muted);
   }
@@ -455,8 +473,7 @@ a[data-footnote-ref].is-active {
   align-items: baseline;
   gap: 0 1.25em;
   color: var(--muted);
-  font-size: 0.875rem;
-  font-style: italic;
+  font-size: 0.9375rem;
   margin: 0 0 1.5em;
 }
 
@@ -483,13 +500,19 @@ a[data-footnote-ref].is-active {
   margin-right: 0;
 }
 
-.post-reply {
+/* Reply / Markdown links under the post: one row that wraps without a
+   dangling separator. Tap height for both links; the text of each is one
+   `.link-text` span (for the reply link together with the arrow, so the bar
+   runs under it too). */
+.post-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.5rem;
   margin-top: 2.5em;
+  font-size: 0.9375rem;
 }
 
-/* Tap height for both links; the text of each is one `.link-text` span (for
-   the reply link together with the arrow, so the bar runs under it too). */
-.post-reply a {
+.post-actions a {
   display: inline-flex;
   align-items: center;
   min-height: var(--tap);
@@ -521,7 +544,7 @@ a[data-footnote-ref].is-active {
   --toc-indent: 0.75rem;
 
   margin: 0 0 1.5em;
-  font-size: 0.9rem;
+  font-size: 0.9375rem;
 }
 
 .toc-icon {
@@ -672,13 +695,14 @@ a[data-footnote-ref].is-active {
 }
 
 /* Wide screens: the TOC leaves the flow and is fixed at the left edge of
-   the viewport (antfu.me style). Only the list icon is visible by default;
-   the entries fade in when the pointer enters the strip (i.e. approaches the
-   TOC from the body) or focus moves into the list. The strip is the left
+   the viewport. The list is always visible (muted, brightening on hover, the
+   current section in the link colour; NN/g: an in-page "on this page" list
+   with a current-section indicator is the reading aid worth having, and one
+   that only appears on hover is one nobody finds). The strip is the left
    margin of the body, capped at `--toc-width` plus the edge and gap paddings,
    so it never overlaps the column and never intercepts clicks on the body
    (10px spare for classic scrollbars, which `100vw` includes). Breakpoint: the
-   body (928px = 880px + 2 x 24px) plus 236px on each side = 1400px, where the
+   body (748px = 700px + 2 x 24px) plus 236px on each side = 1220px, where the
    list is 190px wide. Keep the value in sync with the `matchMedia()` in
    TableOfContents.astro. A long list is clipped by `.toc-body`, which is
    `overflow: hidden` rather than `auto` on purpose: the wheel must always
@@ -688,7 +712,7 @@ a[data-footnote-ref].is-active {
    TableOfContents.astro scrolls `.toc-body` programmatically to keep the
    active entry in view, and moving focus into a clipped entry scrolls it in
    as usual. */
-@media (min-width: 1400px) {
+@media (min-width: 1220px) {
   .toc {
     position: fixed;
     top: 0;
@@ -701,7 +725,7 @@ a[data-footnote-ref].is-active {
     );
     margin: 0;
     padding: var(--toc-top) var(--toc-gap) 1.5rem var(--toc-edge);
-    font-size: 0.85rem;
+    font-size: 0.8125rem;
   }
 
   .toc summary {
@@ -746,8 +770,6 @@ a[data-footnote-ref].is-active {
     padding: 4px;
     max-height: calc(100vh - var(--toc-top) - 1.75rem - 0.5rem - 1.5rem);
     overflow: hidden;
-    opacity: 0;
-    transition: opacity 0.4s ease;
   }
 
   .toc-list-wrap {
@@ -757,11 +779,6 @@ a[data-footnote-ref].is-active {
   .toc:hover summary,
   .toc:focus-within summary {
     color: var(--heading);
-  }
-
-  .toc:hover .toc-body,
-  .toc:focus-within .toc-body {
-    opacity: 1;
   }
 
   .toc a {

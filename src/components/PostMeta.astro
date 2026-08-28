@@ -20,24 +20,28 @@ const showUpdated = updated !== undefined && formatDate(updated) !== formatDate(
 
 <p class="byline">
   <span class="byline-item">
-    <span class="visually-hidden">{t.post.postedOn} </span>
-    <time datetime={toIsoWithOffset(date)}>{formatDate(date)}</time>
+    <span class="visually-hidden" data-pagefind-ignore>{t.post.postedOn} </span>
+    <time datetime={toIsoWithOffset(date)} data-pagefind-meta="date[datetime]">
+      {formatDate(date)}
+    </time>
   </span>
   {
     showUpdated && updated && (
-      <span class="byline-item">
+      <span class="byline-item" data-pagefind-ignore>
         {t.post.updatedOn} <time datetime={toIsoWithOffset(updated)}>{formatDate(updated)}</time>
       </span>
     )
   }
   {
     readingMinutes !== undefined && (
-      <span class="byline-item">{t.post.readingTime(readingMinutes)}</span>
+      <span class="byline-item" data-pagefind-ignore>
+        {t.post.readingTime(readingMinutes)}
+      </span>
     )
   }
   {
     tags.length > 0 && (
-      <span class="byline-item byline-tags">
+      <span class="byline-item byline-tags" data-pagefind-ignore>
         {tags.map((tag) => (
           <a class="tag-link" href={tagUrl(lang, tag)}>
             <span class="link-text">#{tag.toLowerCase()}</span>

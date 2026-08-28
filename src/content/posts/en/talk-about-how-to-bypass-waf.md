@@ -8,13 +8,13 @@ tags:
 translationKey: talk-about-how-to-bypass-waf
 ---
 
-> ## 0×01 Intro
+## 0×01 Intro
 
 This talk is mainly about a way of thinking, not handing you ready-made code.
 
 In many people's eyes a WAF (Web Application Firewall) is another word for "shameless". Without it, our "world" might be a nicer place. Too bad. Without it, how would the big sites survive. That said, I am on your side, so today we talk about bypassing WAFs. I called it a ramble because this talk also goes into webkit, nginx&apache, and more. Let's get started :)
 
-> ## 0x02 Facing WAF
+## 0x02 Facing WAF
 
 As the first section, a few simple ways to bypass a WAF.
 
@@ -63,7 +63,7 @@ Why it works: the WAF is incomplete. It only checks the string once, or the filt
 
 The point of this section: a WAF always has holes. Nothing is perfect.
 
-> ## 0x03 Bypassing WAF from the WebKit angle
+## 0x03 Bypassing WAF from the WebKit angle
 
 Someone might ask: we're talking about bypassing WAFs, why WebKit? Yes, you read that right, I'm not crazy. The reason to talk about WAF bypass from the WebKit angle is that the browser is what parses the code. Who in the browser does the parsing? WebKit. And once you're in WebKit, you have to talk about its parser, the lexer, because that is what we abuse for the bypass.
 
@@ -117,7 +117,7 @@ Skipping carriage returns and line breaks does not work on `on*` events. For exa
 `<a href="#" onclick="aler	t(1)">s</a>` Add a Tab and it will not pop. Spaces between a character and a symbol still work.
 The point of this section: if you want to play better, go down to the bottom layer. Look at the attack from there, and a lot of problems fall apart.
 
-> ## 0x04 Bypassing WAF with an Nginx&Apache environment bug
+## 0x04 Bypassing WAF with an Nginx&Apache environment bug
 
 This bug is pretty lame. You need an nginx&apache setup, and a sloppy admin. It is a bug that isn't really a bug.
 When the site uses Nginx in front and Apache behind, the conf has to hand PHP-suffix requests to Apache. Nginx decides whether the suffix is PHP from the URL. If the URL suffix is not PHP, it will not hand PHP to Apache.
@@ -140,7 +140,7 @@ Visit `a.cn/test/?text=<script>alert(1)</script>` and it pops. `waf.conf` did no
 
 The point of this section: you don't have to aim at the WAF the whole time. You can bypass it through a hole in the environment or a third party.
 
-> ## 0x05 Starting from the HTTP packet
+## 0x05 Starting from the HTTP packet
 
 1. Some sites put the WAF on the client. burp or fiddler is enough.
 A lot of the time it looks like this:
@@ -161,7 +161,7 @@ If the site shows your IP or your browser, you can craft IP and user-agent. In P
 For more, see: [http://www.freebuf.com/articles/web/42727.html](http://www.freebuf.com/articles/web/42727.html) section 0x06.
 The point of this section: the WAF is dead, people are alive. Open the thinking. Don't follow the WAF's path. Walk your own. That is the right way.
 
-> ## 0x06 WAF, you ain't shit
+## 0x06 WAF, you ain't shit
 
 A lot of people think bypassing a WAF means playing by the WAF's rules. We can ignore it and attack anyway.
 We attack through a third-party plugin. Plugins have a lot of privilege, and they can cross origin.

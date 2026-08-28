@@ -13,6 +13,7 @@ ignoreRegExpList:
   # inline SVG data URIs (percent-encoded markup)
   - data:image/svg\+xml[^")]+
 words:
+  - 'pagefind'
   - 'EAAC'
   - 'sesmate'
   - 'wxwork'

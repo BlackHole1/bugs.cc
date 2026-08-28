@@ -28,23 +28,26 @@ const shown = decodeURI(target);
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{t.redirect.title(shown)}</title>
     <meta name="robots" content="noindex" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="light dark" />
     <meta http-equiv="refresh" content={`0;url=${target}`} />
     <link rel="canonical" href={target} />
     <style>
       html {
-        background: #101010;
-        color: #d4d4d4;
-        font-family: Verdana, Geneva, 'DejaVu Sans', sans-serif;
+        color-scheme: light dark;
+        background: light-dark(#fcfcfc, #101010);
+        color: light-dark(#1f1f1f, #d4d4d4);
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue',
+          Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
         line-height: 1.6;
       }
       body {
-        max-width: 880px;
+        max-width: 700px;
         margin: 0 auto;
         padding: 20px;
       }
       a {
-        color: #6fbf9a;
+        color: light-dark(#177a4f, #6fbf9a);
       }
     </style>
   </head>

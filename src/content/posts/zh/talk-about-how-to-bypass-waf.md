@@ -12,13 +12,13 @@ aliases:
   - /zh/posts/杂谈如何绕过wafweb应用防火墙/
 ---
 
-> ## 0×01 前言: {#intro}
+## 0×01 前言: {#intro}
 
 这个议题呢，主要是教大家一个思路，而不是把现成准备好的代码放给大家。
 
 可能在大家眼中 WAF（Web 应用防火墙）就是“不要脸”的代名词。如果没有他，我们的“世界”可能会更加美好。但是事与愿违。没有它，你让各大网站怎么活。但是呢，我是站在你们的这一边的，所以，今天我们就来谈谈如何绕过 WAF 吧。之所以叫做“杂谈”，是因为我在本次演讲里，会涉及到 webkit、nginx&apache 等。下面正式开始:）
 
-> ## 0x02 直视 WAF: {#what-is-waf}
+## 0x02 直视 WAF: {#what-is-waf}
 
 作为第一节，我先为大家简单的说下一些绕过 WAF 的方法。
 
@@ -67,7 +67,7 @@ SQL: selselectect verversionsion();
 
 本节是告诉大家，waf 总会有自己缺陷的，任何事物都不可能完美。
 
-> ## 0x03 站在 webkit 角度来说绕过 WAF: {#webkit-bypass}
+## 0x03 站在 webkit 角度来说绕过 WAF: {#webkit-bypass}
 
 可能这时会有人问到，说绕过 WAF，怎么跑到 webkit 上去了。嗯，你没有看错，我也没有疯。之说以站在 webkit 角度来讲绕过 WAF，是因为各个代码的功能是由浏览器来解析的。那浏览器中谁又负责解析呢？那就是 webkit，既然要说到 webkit，那就不得不提 webkit 下的解析器——词法分析器，因为我们在绕过的时候，就是利用解析器中的词法分析器来完成。
 
@@ -122,7 +122,7 @@ script:alert(1); height=0 width=0 /><iframe>  <!--这个不可以弹窗-->
 `<a href="#" onclick="aler	t(1)">s</a>` 可见加了 Tab 换行，就无法弹窗了。但是还是支持字符和符号之间加入空格的。
 本节就是告诉大家，想要玩的更好，最好追溯到底层，从底层来看攻击手法，你会发现很多问题迎刃而解。
 
-> ## 0x04 利用 Nginx&Apache 环境 BUG 来绕过 waf: {#nginx-apache-bug}
+## 0x04 利用 Nginx&Apache 环境 BUG 来绕过 waf: {#nginx-apache-bug}
 
 这个 bug 比较鸡肋，需要在 nginx&apache 环境，而且管理员较大意。这是一个不是 bug 的 bug。
 当网站采用前端 Nginx，后端 Apache 时，需要在 conf 配置，当遇到 PHP 后缀的时候，把请求交给 Apache 处理。但是 Nginx 判断后缀是否为 PHP 的原理是根据 URL 的。也就是说如果当 URL 的后缀不是 PHP 的时候，他并不会把 PHP 教给 Apache 处理。
@@ -145,7 +145,7 @@ script:alert(1); height=0 width=0 /><iframe>  <!--这个不可以弹窗-->
 
 本节是告诉大家，绕过 WAF 不用一直针对 WAF，也可以利用环境/第三方的缺陷来绕过。
 
-> ## 0x05 从 HTTP 数据包开始说起: {#http-packet}
+## 0x05 从 HTTP 数据包开始说起: {#http-packet}
 
 1、 现在有一部分网站 waf 是部署在客户端上的，利用 burp、fiddler 就可以轻松绕过。
 很多时候我们遇到的情况就像这段代码一样:
@@ -166,7 +166,7 @@ script:alert(1); height=0 width=0 /><iframe>  <!--这个不可以弹窗-->
 想详细了解的可以去: [http://www.freebuf.com/articles/web/42727.html](http://www.freebuf.com/articles/web/42727.html) 0x06 节。
 本节告诉我们 waf 是死的，人是活的，思想放开。不要跟着 WAF 的思路走，走出自己的思路，才是最正确的。
 
-> ## 0x06 WAF 你算个屌: {#extension-bypass}
+## 0x06 WAF 你算个屌: {#extension-bypass}
 
 很多人认为绕过 WAF 需要根据 WAF 的规则来绕过。但是我们可以忽视他，进行攻击。
 我们利用第三方插件来进行攻击，因为第三方插件的权限非常大，而且他有一个特殊的性质，就是他可以跨域。
