@@ -7,6 +7,7 @@ import Seo from '@/components/Seo.astro';
 import SkipLink from '@/components/SkipLink.astro';
 import { otherLang, useTranslations, type Lang } from '@/i18n';
 import { SITE } from '@/lib/site';
+import { llmsUrl } from '@/lib/url';
 import '@/styles/global.css';
 import '@/styles/typography.css';
 import '@/styles/code.css';
@@ -56,6 +57,20 @@ const switchHref = alternates[otherLang(lang)];
 // falls back to the other language's home page and says so (the 404 page
 // declares no alternates at all and gets the plain switch).
 const switchFallback = switchHref === undefined && alternates[lang] !== undefined;
+
+/**
+ * Theme, before first paint: `data-theme` on `<html>` from localStorage or
+ * the OS preference, and the matching `theme-color`. Kept as one statement
+ * with no dependencies so a syntax error in a bundle can never leave the
+ * page in the wrong scheme; ThemeToggle.astro owns the rest (the button, OS
+ * changes while nothing is stored, prerendered and restored pages).
+ */
+const themeScript =
+  `(function(){var t;try{t=localStorage.getItem('theme')}catch(e){}` +
+  `if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';` +
+  `document.documentElement.dataset.theme=t;` +
+  `var m=document.querySelector('meta[name=theme-color]');` +
+  `if(m)m.content=t==='dark'?${JSON.stringify(SITE.themeColor.dark)}:${JSON.stringify(SITE.themeColor.light)}})();`;
 ---
 
 <!doctype html>
@@ -77,9 +92,12 @@ const switchFallback = switchHref === undefined && alternates[lang] !== undefine
       noCanonical={noCanonical}
       markdown={markdown}
     />
-    <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content={SITE.themeColor} />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content={SITE.themeColor.light} />
+    <script is:inline set:html={themeScript} />
     <meta name="generator" content={Astro.generator} />
+    <!-- llms.txt v2 discovery: the index that covers this page (llmstxt.org). -->
+    <link rel="describedby" type="text/markdown" href={llmsUrl()} />
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" href="/favicon.png" type="image/png" sizes="192x192" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

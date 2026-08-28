@@ -3,7 +3,8 @@ import PostList from '@/components/PostList.astro';
 import TagCloud from '@/components/TagCloud.astro';
 import Base from '@/layouts/Base.astro';
 import { useTranslations, type Lang } from '@/i18n';
-import { getPosts, getTags } from '@/lib/posts';
+import { formatDate } from '@/lib/dates';
+import { getPosts, getTags, type Post } from '@/lib/posts';
 import { postsIndexUrl } from '@/lib/url';
 
 export interface Props {
@@ -14,6 +15,13 @@ const { lang } = Astro.props;
 const t = useTranslations(lang);
 const posts = await getPosts(lang);
 const tags = (await getTags(lang)).toSorted((a, b) => a.tag.localeCompare(b.tag));
+
+// One group per year (site time zone, like the dates shown), newest first.
+const byYear = new Map<string, Post[]>();
+for (const post of posts) {
+  const year = formatDate(post.data.date).slice(0, 4);
+  byYear.set(year, [...(byYear.get(year) ?? []), post]);
+}
 ---
 
 <Base
@@ -23,21 +31,30 @@ const tags = (await getTags(lang)).toSorted((a, b) => a.tag.localeCompare(b.tag)
   path={postsIndexUrl(lang)}
   alternates={{ en: postsIndexUrl('en'), zh: postsIndexUrl('zh') }}
 >
-  <h1 id="posts-title" class="page-title">{t.posts.title}</h1>
+  <h1>{t.posts.title}</h1>
+  {posts.length === 0 && <p>{t.home.noPosts}</p>}
   {
-    posts.length === 0 ? (
-      <p>{t.home.noPosts}</p>
-    ) : (
-      <PostList {posts} {lang} labelledBy="posts-title" />
-    )
+    [...byYear].map(([year, group]) => (
+      <section class="year" aria-labelledby={`year-${year}`}>
+        <h2 id={`year-${year}`} class="year-heading">
+          {year}
+        </h2>
+        <PostList posts={group} {lang} labelledBy={`year-${year}`} />
+      </section>
+    ))
   }
   {tags.length > 0 && <TagCloud {tags} {lang} />}
 </Base>
 
 <style>
-  .page-title {
-    font-size: 1.1rem;
+  .year-heading {
+    margin: 1.25em 0 0.25em;
+    font-size: 1.0625rem;
     color: var(--muted);
-    margin: 0 0 1rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .year:first-of-type .year-heading {
+    margin-top: 0.5em;
   }
 </style>

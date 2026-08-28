@@ -27,6 +27,10 @@ export function projectsIndexUrl(lang: Lang): string {
   return `${localePrefix(lang)}/projects/`;
 }
 
+export function searchUrl(lang: Lang): string {
+  return `${localePrefix(lang)}/search/`;
+}
+
 export function tagsIndexUrl(lang: Lang): string {
   return `${localePrefix(lang)}/tags/`;
 }

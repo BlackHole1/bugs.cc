@@ -9,12 +9,19 @@ export const SITE = {
   twitter: 'Free_BlackHole',
   github: 'BlackHole1',
   mastodon: '@Black_Hole',
+  /** Public profiles, for `sameAs` in the JSON-LD Person. */
+  profiles: [
+    'https://github.com/BlackHole1',
+    'https://x.com/Free_BlackHole',
+    'https://mastodon.social/@Black_Hole',
+  ],
   copyright: 'Kevin Cui (CC BY 4.0)',
   license: { name: 'CC BY 4.0', url: 'https://creativecommons.org/licenses/by/4.0/' },
   /** Static default social image (1200x630). */
   ogImage: '/img/og.png',
   avatar: '/img/avatar.jpg',
-  themeColor: '#101010',
+  /** `theme-color` of each scheme (the `--bg` tokens in global.css). */
+  themeColor: { light: '#fcfcfc', dark: '#101010' },
   /** PostHog (EU Cloud, project "bugs.cc"); see src/components/Analytics.astro. */
   posthog: {
     token: 'phc_s2Nz4676edx9KGFf47gmxZsmLJTSeJDnTJbv8VQqGhKH',

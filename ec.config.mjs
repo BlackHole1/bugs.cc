@@ -15,10 +15,15 @@ import { notationMarkers } from './src/expressive-code/notation-markers.ts';
  */
 
 /**
- * Colour adjustments to Dracula for WCAG AA (4.5:1). The tokens are drawn on
- * the neutral `--code-bg` #161616 (global.css), not on Dracula's #282a36, and
- * the ratios below are on that surface and on the mark/ins/del line
- * backgrounds further down:
+ * Two themes, GitHub Light (base) and Dracula, switched the way the page is
+ * (global.css): `<html data-theme="light|dark">` from the theme script, and
+ * `prefers-color-scheme` when there is no attribute (EC emits
+ * `:root:not([data-theme='light'])` inside the media query, so the no-JS page
+ * and the JS page agree). The tokens are drawn on the neutral `--code-bg`
+ * (#f5f5f5 / #161616), not on the themes' own backgrounds.
+ *
+ * Colour adjustments to Dracula for WCAG AA (4.5:1). The ratios below are on
+ * #161616 and on the mark/ins/del line backgrounds further down:
  * - comments #6272A4 are 3.9:1 plain and 3.2:1 on marked lines; #91a0d3 is
  *   7.0:1 plain and 5.8:1 on marked lines;
  * - red #FF5555 is 5.8:1 plain but 4.8:1 on marked lines; #ff7575 is 6.9:1
@@ -43,14 +48,14 @@ pluginCollapsibleSectionsTexts.overrideTexts('zh', {
 const ZH_DOCUMENT = /[\\/]zh[\\/]/;
 
 export default defineEcConfig({
-  themes: ['dracula'],
+  themes: ['github-light', 'dracula'],
   // Inline the EC styles (~4.5 KB gzipped) instead of a `<link>` inside the
   // article body, which render-blocks everything below it on first view. This
   // also removes the stale `ec.<hash>.css` reference problem of the content
   // cache (see README).
   emitExternalStylesheet: false,
-  useDarkModeMediaQuery: false,
-  themeCssSelector: false,
+  useDarkModeMediaQuery: true,
+  themeCssSelector: (theme) => `[data-theme='${theme.type}']`,
   // `notationMarkers` adds the `[!code highlight]` comment syntax on top of the
   // built-in text-markers plugin (see the file header for the syntax).
   plugins: [pluginCollapsibleSections(), notationMarkers()],
@@ -87,11 +92,15 @@ export default defineEcConfig({
   },
   styleOverrides: {
     codeFontFamily: 'var(--font-mono)',
-    codeFontSize: '0.85rem',
+    // 13.5px: three quarters of the 18px body (Tufte, sive.rs), and 80
+    // columns (648px) plus the 20px inline padding fit the 700px reading
+    // column without scrolling.
+    codeFontSize: '0.84375rem',
     codeLineHeight: '1.6',
     codeFontWeight: '400',
+    codePaddingInline: '1.25rem',
     uiFontFamily: 'var(--font-sans)',
-    uiFontSize: '0.8rem',
+    uiFontSize: '0.8125rem',
     borderRadius: '6px',
     borderColor: 'var(--border)',
     codeBackground: 'var(--code-bg)',
@@ -99,18 +108,19 @@ export default defineEcConfig({
       shadowColor: 'transparent',
       // The editor tab bar is the only header left (blocks with `title=`).
       editorActiveTabIndicatorTopColor: 'var(--link)',
-      editorTabBarBackground: '#0d0d0d',
+      editorTabBarBackground: ({ theme }) => (theme.type === 'dark' ? '#0d0d0d' : '#ececec'),
     },
     // EC's default 50% tints left comments, red tokens and the +/- indicators
     // below 4.5:1 on marked lines; 33% keeps every token at or above it (the
     // accent bar on the left still marks the line clearly). On #161616 the
-    // blended line backgrounds are #1b273c / #1b2b18 / #3a1f1d.
+    // blended dark line backgrounds are #1b273c / #1b2b18 / #3a1f1d; the light
+    // tints are the same hues at 16% on #f5f5f5.
     textMarkers: {
-      markBackground: '#264a8955',
-      insBackground: '#26561c55',
-      delBackground: '#81322b55',
-      insDiffIndicatorColor: '#9fd18f',
-      delDiffIndicatorColor: '#f2a196',
+      markBackground: ({ theme }) => (theme.type === 'dark' ? '#264a8955' : '#2b6cb029'),
+      insBackground: ({ theme }) => (theme.type === 'dark' ? '#26561c55' : '#2f855a29'),
+      delBackground: ({ theme }) => (theme.type === 'dark' ? '#81322b55' : '#c5303029'),
+      insDiffIndicatorColor: ({ theme }) => (theme.type === 'dark' ? '#9fd18f' : '#1a7f37'),
+      delDiffIndicatorColor: ({ theme }) => (theme.type === 'dark' ? '#f2a196' : '#cf222e'),
     },
   },
 });

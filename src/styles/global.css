@@ -1,35 +1,51 @@
-/* Design tokens (dark only). A neutral near-black ladder (no blue or purple
-   tint) with one green accent; every text token is at or above WCAG 4.5:1 on
-   the surfaces it sits on (computed 2026-08-26, see docs/ARCHITECTURE.md
-   deviation 68): text 12.8:1, heading 17:1, link 8.7:1, visited 9.0:1,
-   muted 7.4:1 (6.9:1 on --zebra), inline code 13.3:1 on its tint. */
+/* Design tokens. Two neutral ladders (no blue or purple tint) with one green
+   accent, picked by `color-scheme` through `light-dark()`: the light ladder is
+   near-white, the dark one near-black. `<html data-theme>` (set before first
+   paint by the inline script in Base.astro, from localStorage or the OS
+   preference; toggled by ThemeToggle.astro) pins the scheme; without
+   JavaScript `color-scheme: light dark` follows the OS. Every text token is at
+   or above WCAG 4.5:1 on the surfaces it sits on (computed 2026-08-27):
+   light: text 16.1:1, heading 18.4:1, link 5.2:1, visited 5.3:1, muted 6.2:1
+   (5.8:1 on --zebra); dark: text 12.8:1, heading 17:1, link 8.7:1, visited
+   9.0:1, muted 7.4:1 (6.9:1 on --zebra). Dark text stays off pure white and
+   the dark page off pure black (APCA: #ddd-#fafafa on #121212-#222 avoids the
+   halo of #fff on #000). */
 :root {
-  --bg: #101010;
-  --text: #d4d4d4;
-  --heading: #f2f2f2;
-  --link: #6fbf9a;
-  --link-visited: #a8b5ad;
-  --muted: #a1a1a1;
-  --quote-border: #4a4a4a;
-  --border: #2a2a2a;
-  --zebra: #171717;
-  /* Code blocks: one step lighter than the page (1.05:1) with a --border
-     frame; the Dracula tokens are drawn on this neutral surface instead of
-     Dracula's own #282a36 (see ec.config.mjs). */
-  --code-bg: #161616;
-  /* Inline code: neutral tint plus text one step brighter than the body. */
-  --inline-code: #ececec;
-  --inline-code-bg: rgba(255, 255, 255, 0.08);
+  color-scheme: light dark;
+
+  --bg: light-dark(#fcfcfc, #101010);
+  --text: light-dark(#1f1f1f, #d4d4d4);
+  --heading: light-dark(#111111, #f2f2f2);
+  --link: light-dark(#177a4f, #6fbf9a);
+  --link-visited: light-dark(#566f62, #a8b5ad);
+  --muted: light-dark(#5f5f5f, #a1a1a1);
+  --quote-border: light-dark(#cfcfcf, #4a4a4a);
+  --border: light-dark(#e3e3e3, #2a2a2a);
+  --zebra: light-dark(#f4f4f4, #171717);
+  /* Code blocks: one step off the page with a --border frame; the Expressive
+     Code tokens (GitHub Light / Dracula, see ec.config.mjs) are drawn on this
+     neutral surface instead of the themes' own backgrounds. */
+  --code-bg: light-dark(#f5f5f5, #161616);
+  /* Inline code: neutral tint plus text one step stronger than the body. */
+  --inline-code: light-dark(#1a1a1a, #ececec);
+  --inline-code-bg: light-dark(rgba(0, 0, 0, 0.06), rgba(255, 255, 255, 0.08));
   --focus: var(--link);
-  --selection: rgba(111, 191, 154, 0.3);
-  /* Reading column. 880px is ~86ch of Verdana 16px (technical blogs run
-     75 to 90ch to fit code; prose-only sites stop at 75ch = 760px), 55 CJK
-     characters, and about 100 columns of Fira Code 0.85rem, so 80-column
-     code never scrolls. Tablets and phones use the viewport width minus the
-     gutters; the gutter grows a little from 640px up. */
-  --width: 880px;
+  --selection: light-dark(rgba(23, 122, 79, 0.2), rgba(111, 191, 154, 0.3));
+  /* Reading column. 700px holds about 80 characters of 18px system sans per
+     line (measured, not `ch`: the `ch` unit is the width of a digit, prose
+     runs 20% more characters than `width / 1ch`), 39 CJK characters, and 80
+     columns of Fira Code 13.5px plus the frame padding (648px + 2 x 20px +
+     2px), so 80-column code never scrolls. The admired personal tech blogs
+     sit between 600 and 740px (paco 640, overreacted 672, joshwcomeau 686,
+     bun 736). Tablets and phones use the viewport width minus the gutters. */
+  --width: 700px;
   --gutter: 20px;
-  --font-sans: Verdana, Geneva, 'DejaVu Sans', sans-serif;
+  /* System sans-serif: no download, the face the reader's OS already draws its
+     UI with (SF on Apple, Segoe on Windows, Roboto on Android), with the CJK
+     faces after it for Chinese runs inside English pages. */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial,
+    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
   /* --font-mono is provided by the Astro Fonts API (<Font /> in Base.astro). */
   --tap: 44px;
   /* Link underline (typography.css `a`): the sweep-in timing, and the
@@ -38,21 +54,27 @@
   --underline-duration: 0.25s;
   --underline-ease: cubic-bezier(0.4, 0, 0.2, 1);
   --underline-rest: currentColor;
-  /* Table of contents fixed at the left edge of the viewport (>= 1400px):
+  /* Table of contents fixed at the left edge of the viewport (>= 1220px):
      list width, distance from the viewport edge, minimum gap to the body
      column, and distance from the top (roughly the article title). */
   --toc-width: 200px;
   --toc-edge: 1.25rem;
   --toc-gap: 1rem;
   --toc-top: 5rem;
-  /* Sidenotes (typography.css, Sidenotes.astro): on >= 1440px the footnotes
+  /* Sidenotes (typography.css, Sidenotes.astro): on >= 1280px the footnotes
      become a column in the right margin, `--sidenote-gap` from the reading
-     column and at most `--sidenote-width` wide (232px at 1440px, the full
-     width from 1552px). Keep the breakpoint in sync with the `matchMedia()`
+     column and at most `--sidenote-width` wide (242px at 1280px, the full
+     width from 1356px). Keep the breakpoint in sync with the `matchMedia()`
      in Sidenotes.astro. */
   --sidenote-width: 280px;
   --sidenote-gap: 32px;
+}
 
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
   color-scheme: dark;
 }
 
@@ -103,33 +125,46 @@ body {
   /* `--width` of content plus the gutters (content-box like the old site). */
   max-width: calc(var(--width) + 2 * var(--gutter));
   font-family: var(--font-sans);
-  font-size: 1rem;
+  /* 17px on phones (the iOS body size), 18px from tablets up, where the
+     blogs of this kind sit (bun 17, joshwcomeau 18, swyx 18, lea 17.6). Set
+     in rem so the reader's own default size still applies. */
+  font-size: 1.0625rem;
   line-height: 1.6;
   color: var(--text);
   overflow-wrap: break-word;
 }
 
+@media (min-width: 640px) {
+  body {
+    font-size: 1.125rem;
+  }
+}
+
 /* Chinese. `:lang(zh)` matches every element of a Chinese page with (0,1,0)
-   specificity, so only inter-script spacing lives there; the wider leading and
-   the CJK fallback stack are set on `body` (inherited) and on Chinese
-   paragraphs of English pages (the 404 page). Putting them on `:lang(zh)`
-   would beat the element rules for headings (line-height 1.3), sub/sup (0)
-   and code (monospace font). */
+   specificity, so only inter-script spacing lives there; the wider leading
+   (clreq: a line gap of 50 to 100% of the em box) is set on `body` (inherited)
+   and on Chinese paragraphs of English pages (the 404 page). Putting it on
+   `:lang(zh)` would beat the element rules for headings (line-height 1.3),
+   sub/sup (0) and code (monospace font). The font stack already ends in the
+   CJK faces, so nothing changes there. */
 :lang(zh) {
   text-autospace: normal;
 }
 
 html:lang(zh) body,
 p:lang(zh) {
-  line-height: 1.7;
-  font-family:
-    Verdana, Geneva, 'DejaVu Sans', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans CJK SC',
-    'Microsoft YaHei', sans-serif;
+  line-height: 1.75;
 }
 
 /* CJK glyphs fill the em box; give Chinese headings a little more room. */
 html:lang(zh) :is(h1, h2, h3, h4, h5, h6) {
   line-height: 1.4;
+}
+
+/* CJK faces have no italic; browsers synthesise a slanted one, which is
+   hard to read. Nothing on a Chinese page is italic. */
+html:lang(zh) :is(em, i, cite, dfn, blockquote, address) {
+  font-style: normal;
 }
 
 :focus-visible {
@@ -182,7 +217,8 @@ html:lang(zh) :is(h1, h2, h3, h4, h5, h6) {
   align-items: center;
   justify-content: space-between;
   gap: 0 1.5rem;
-  margin: 0 0 1.25rem;
+  margin: 0 0 1.5rem;
+  font-size: 0.9375rem;
 }
 
 .site-title {
@@ -190,7 +226,7 @@ html:lang(zh) :is(h1, h2, h3, h4, h5, h6) {
   align-items: center;
   gap: 0.6rem;
   min-height: var(--tap);
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: bold;
   line-height: 1.2;
   color: var(--heading);
@@ -260,6 +296,33 @@ html:lang(zh) :is(h1, h2, h3, h4, h5, h6) {
   cursor: default;
 }
 
+/* Theme toggle (ThemeToggle.astro): a nav-sized button showing the icon of
+   the scheme it switches to (moon on a light page, sun on a dark one). It
+   needs JavaScript, which also sets `data-theme`; without it nothing is
+   rendered and the page follows the OS through `color-scheme`. */
+.theme-toggle {
+  border: 0;
+  background: none;
+  color: var(--link);
+  font: inherit;
+  cursor: pointer;
+}
+
+.theme-toggle .nav-icon {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+:root:not([data-theme]) .theme-toggle,
+:root[data-theme='light'] .theme-toggle-sun,
+:root[data-theme='dark'] .theme-toggle-moon {
+  display: none;
+}
+
+.theme-toggle:hover {
+  color: var(--heading);
+}
+
 main {
   min-height: 40vh;
 }
@@ -269,6 +332,10 @@ main:focus {
 }
 
 .site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 1.5rem;
   margin-top: 3rem;
   padding: 1.5rem 0;
   text-align: center;
@@ -286,4 +353,30 @@ main:focus {
 /* Native scroll lock while the lightbox dialog is open. */
 html.lightbox-open {
   overflow: hidden;
+}
+
+@media print {
+  html {
+    background: #fff;
+    color-scheme: light;
+  }
+
+  body {
+    max-width: none;
+    color: #000;
+  }
+
+  .skip-link,
+  .site-nav,
+  .site-footer,
+  .toc,
+  .post-actions,
+  .prev-next,
+  .heading-anchor {
+    display: none !important;
+  }
+
+  a {
+    color: inherit;
+  }
 }

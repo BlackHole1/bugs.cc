@@ -1,6 +1,6 @@
 # bugs.cc
 
-Kevin Cui's personal blog. An Astro 7 static site, English and Chinese, dark theme only, hosted on GitHub Pages (`bugs.cc`).
+Kevin Cui's personal blog. An Astro 7 static site, English and Chinese, light and dark themes (OS preference plus a toggle), hosted on GitHub Pages (`bugs.cc`).
 
 ## Setup
 
@@ -16,7 +16,7 @@ bun install
 | Command                                        | What it does                                                                                                                     |
 | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | `bun run dev`                                  | Dev server                                                                                                                       |
-| `bun run build`                                | Build to `dist/` (always `--force`; see AGENTS.md for why)                                                                       |
+| `bun run build`                                | Build to `dist/` (always `--force`; see AGENTS.md for why), then index it for search (`pagefind --site dist`)                    |
 | `bun run preview`                              | Preview `dist/`                                                                                                                  |
 | `bun run check` / `lint` / `fmt` / `fmt:check` | Typecheck, oxlint + markdownlint, format                                                                                         |
 | `bun run lint:md` / `lint:md:fix`              | markdownlint on every `.md` / `.mdx` (README, posts, pages); `:fix` rewrites what is fixable. Config: `.markdownlint-cli2.jsonc` |
@@ -26,6 +26,10 @@ bun install
 | `bun run lh`                                   | After a build, run Lighthouse on the main pages (desktop + mobile). Reports go to `.lh/`.                                        |
 
 CI on pull requests and on pushes outside `main` runs lint, fmt:check, check, test, img --check, and build in that order. On a push to `main`, `deploy.yml` runs the same steps and publishes to GitHub Pages only if they all pass.
+
+## Search
+
+`/search/` and `/zh/search/` are full-text search over the posts, built on [Pagefind](https://pagefind.app/). `bun run build` runs `pagefind --site dist` after `astro build`, which indexes every `<article data-pagefind-body>` (post pages only; the table of contents, byline extras and the reply links are `data-pagefind-ignore`) per language from `<html lang>` and writes the index to `dist/pagefind/`. The search page (`src/components/pages/SearchPage.astro`) loads `pagefind.js` and the index chunks only after the reader types, so no other page pays for it. `bun run dev` has no index: the page reports search as unavailable there.
 
 ## Analytics
 

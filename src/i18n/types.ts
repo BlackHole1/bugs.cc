@@ -12,9 +12,8 @@ export interface UIStrings {
    * BCP 47 language tag used wherever HTML expects one: `<html lang>`,
    * `hreflang` (head links, sitemap `xhtml:link`, language switch), `<p lang>`
    * and JSON-LD `inLanguage`. `en` for English and `zh-Hans` for Simplified
-   * Chinese (script subtag; see docs/ARCHITECTURE.md, deviation on language
-   * tags). Formats with their own code lists do not use it: `ogLocale` and
-   * `rssLanguage` below.
+   * Chinese (script subtag, so `zh-Hans` rather than `zh-CN`). Formats with
+   * their own code lists do not use it: `ogLocale` and `rssLanguage` below.
    */
   htmlLang: string;
   /** `og:locale` value (Open Graph wants `language_TERRITORY`). */
@@ -38,6 +37,7 @@ export interface UIStrings {
     home: string;
     posts: string;
     projects: string;
+    search: string;
     rss: string;
     /** `title` of the language switch when the page has a translation. */
     languageSwitch: string;
@@ -45,6 +45,9 @@ export interface UIStrings {
     noTranslation: string;
     /** `(opens in a new tab)` hint, also appended to external links in prose. */
     externalLink: string;
+    /** Accessible names of the theme toggle: what pressing it switches to. */
+    themeLight: string;
+    themeDark: string;
   };
 
   home: {
@@ -66,6 +69,23 @@ export interface UIStrings {
     description: string;
     /** Lead paragraph above the list. */
     intro: string;
+  };
+
+  /** Search page (`SearchPage.astro`, Pagefind). */
+  search: {
+    title: string;
+    description: string;
+    /** Accessible name of the query field. */
+    label: string;
+    placeholder: string;
+    /** `12 results for "foo"`; `{n}` and `{q}` are filled in by the page script. */
+    results: string;
+    /** `No results for "foo"`; `{q}` is filled in by the page script. */
+    noResults: string;
+    loading: string;
+    /** The index is missing or failed to load (dev server, blocked request). */
+    error: string;
+    needsJs: string;
   };
 
   tags: {

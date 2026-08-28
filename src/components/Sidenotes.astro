@@ -1,6 +1,6 @@
 ---
 /**
- * Footnotes as sidenotes in the right margin (>= 1440px). Progressive: the
+ * Footnotes as sidenotes in the right margin (>= 1280px). Progressive: the
  * markup is the GFM footnotes section at the end of the post (plugins/
  * footnotes), which typography.css turns into a column next to the reading
  * column on wide screens; without this script the notes simply stack there.
@@ -47,7 +47,7 @@
   const body = section?.closest<HTMLElement>('.post-body');
   if (section && body) {
     // Keep in sync with the sidenote rules in typography.css.
-    const wide = matchMedia('(min-width: 1440px)');
+    const wide = matchMedia('(min-width: 1280px)');
     const GAP = 12;
 
     interface Pair {

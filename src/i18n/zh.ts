@@ -16,10 +16,13 @@ export const zh: UIStrings = {
     home: '首页',
     posts: '文章',
     projects: '项目',
+    search: '搜索',
     rss: 'RSS',
     languageSwitch: '切换语言',
     noTranslation: '本页没有英文版',
     externalLink: '在新标签页打开',
+    themeLight: '切换到浅色主题',
+    themeDark: '切换到深色主题',
   },
 
   home: {
@@ -39,6 +42,18 @@ export const zh: UIStrings = {
     title: '项目',
     description: 'Kevin Cui 编写和维护的开源项目。',
     intro: '我编写和维护的开源项目。',
+  },
+
+  search: {
+    title: '搜索',
+    description: "搜索 Kevin Cui's Blog 的文章。",
+    label: '搜索文章',
+    placeholder: '搜索文章',
+    results: '「{q}」有 {n} 条结果',
+    noResults: '没有找到「{q}」',
+    loading: '搜索中…',
+    error: '搜索暂时不可用。',
+    needsJs: '搜索需要 JavaScript。',
   },
 
   tags: {

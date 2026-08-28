@@ -1,0 +1,255 @@
+---
+import Base from '@/layouts/Base.astro';
+import { useTranslations, type Lang } from '@/i18n';
+import { searchUrl } from '@/lib/url';
+
+/**
+ * Full-text search over the posts of this language, built on Pagefind
+ * (`pagefind --site dist` after `astro build`; the index lives in
+ * `/pagefind/`). Only `<article data-pagefind-body>` (PostPage.astro) is
+ * indexed, per language from `<html lang>`, and the runtime is loaded only on
+ * this page and only once the reader has typed (or arrived with `?q=`): the
+ * small `pagefind.js`, then the index chunks and the fragments of the results
+ * actually shown. Nothing of it touches any other page. The form works
+ * without JavaScript as far as it can: it submits to this page with `?q=`,
+ * which the script then runs. Results are rendered from Pagefind's own data
+ * (title, date, an excerpt with `<mark>` around the matches).
+ */
+export interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+const path = searchUrl(lang);
+---
+
+<Base
+  lang={lang}
+  title={t.search.title}
+  description={t.search.description}
+  path={path}
+  alternates={{ en: searchUrl('en'), zh: searchUrl('zh') }}
+  noindex
+>
+  <h1>{t.search.title}</h1>
+  <form
+    class="search-form"
+    role="search"
+    action={path}
+    method="get"
+    data-search
+    data-l-results={t.search.results}
+    data-l-no-results={t.search.noResults}
+    data-l-loading={t.search.loading}
+    data-l-error={t.search.error}
+  >
+    <label class="visually-hidden" for="search-query">{t.search.label}</label>
+    <input
+      id="search-query"
+      class="search-input"
+      type="search"
+      name="q"
+      placeholder={t.search.placeholder}
+      autocomplete="off"
+      autocapitalize="off"
+      spellcheck="false"
+      autofocus
+    />
+  </form>
+  <p class="search-status" aria-live="polite" data-search-status></p>
+  <ol class="search-results" data-search-results></ol>
+  <noscript><p>{t.search.needsJs}</p></noscript>
+</Base>
+
+<style>
+  .search-form {
+    margin: 0 0 1.5rem;
+  }
+
+  .search-input {
+    width: 100%;
+    min-height: var(--tap);
+    padding: 0.5em 0.9em;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--zebra);
+    color: var(--heading);
+    font: inherit;
+    font-size: 1.125rem;
+  }
+
+  .search-input:focus {
+    border-color: var(--link);
+    outline: none;
+  }
+
+  .search-input::placeholder {
+    color: var(--muted);
+  }
+
+  .search-status {
+    min-height: 1.6em;
+    color: var(--muted);
+  }
+
+  .search-results {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* The result markup is created by the script, so it carries no scoped
+     attribute: the descendants are addressed through `:global()`. */
+  .search-results :global(li) {
+    margin: 0 0 1.5rem;
+  }
+
+  .search-results :global(a) {
+    font-weight: bold;
+  }
+
+  .search-results :global(time) {
+    margin-left: 0.75em;
+    font-size: 0.9375rem;
+  }
+
+  .search-results :global(p) {
+    margin: 0.25em 0 0;
+    color: var(--muted);
+  }
+
+  .search-results :global(mark) {
+    background: var(--selection);
+    color: var(--heading);
+  }
+</style>
+
+<script>
+  interface PagefindResultData {
+    url: string;
+    excerpt: string;
+    meta: Record<string, string>;
+  }
+  interface PagefindResult {
+    id: string;
+    data(): Promise<PagefindResultData>;
+  }
+  interface Pagefind {
+    init(): Promise<void>;
+    options(options: Record<string, unknown>): Promise<void>;
+    search(query: string): Promise<{ results: PagefindResult[] }>;
+    preload(query: string): Promise<void>;
+  }
+
+  const form = document.querySelector<HTMLFormElement>('form[data-search]');
+  const input = form?.querySelector<HTMLInputElement>('input[name="q"]');
+  const status = document.querySelector<HTMLElement>('[data-search-status]');
+  const list = document.querySelector<HTMLOListElement>('[data-search-results]');
+
+  if (form && input && status && list) {
+    const label = (key: string, values: Record<string, string> = {}) =>
+      (form.dataset[key] ?? '').replace(/\{(\w+)\}/g, (_, k: string) => values[k] ?? '');
+    const MAX = 20;
+    let pagefind: Promise<Pagefind> | undefined;
+    let latest = 0;
+    let timer = 0;
+
+    // The runtime is a plain module in the built site, outside the bundle.
+    // A literal `import()` here would be rewritten by Vite into its preload
+    // helper, which Astro's inlined scripts do not carry (`__VITE_PRELOAD__`
+    // is not defined), so the import is built out of Vite's sight.
+    const importPagefind = new Function(
+      'return import("/pagefind/pagefind.js")',
+    ) as () => Promise<Pagefind>;
+    const load = () => {
+      if (!pagefind) {
+        pagefind = importPagefind().then(async (module) => {
+          await module.options({ excerptLength: 30 });
+          await module.init();
+          return module;
+        });
+        pagefind.catch(() => {
+          pagefind = undefined;
+        });
+      }
+      return pagefind;
+    };
+
+    const render = (items: PagefindResultData[]) => {
+      list.replaceChildren(
+        ...items.map((item) => {
+          const li = document.createElement('li');
+          const a = document.createElement('a');
+          a.href = item.url;
+          a.textContent = item.meta.title ?? item.url;
+          li.append(a);
+          const date = item.meta.date;
+          if (date) {
+            const time = document.createElement('time');
+            time.dateTime = date;
+            time.textContent = date.slice(0, 10);
+            li.append(time);
+          }
+          const p = document.createElement('p');
+          // Pagefind's excerpt: the page's own text with <mark> around matches.
+          p.innerHTML = item.excerpt;
+          li.append(p);
+          return li;
+        }),
+      );
+    };
+
+    const run = async (query: string) => {
+      const id = ++latest;
+      const url = new URL(location.href);
+      if (query) url.searchParams.set('q', query);
+      else url.searchParams.delete('q');
+      history.replaceState(null, '', url);
+      if (!query) {
+        status.textContent = '';
+        list.replaceChildren();
+        return;
+      }
+      status.textContent = label('lLoading');
+      try {
+        const engine = await load();
+        const { results } = await engine.search(query);
+        if (id !== latest) return;
+        const items = await Promise.all(results.slice(0, MAX).map((r) => r.data()));
+        if (id !== latest) return;
+        render(items);
+        status.textContent =
+          results.length === 0
+            ? label('lNoResults', { q: query })
+            : label('lResults', { n: String(results.length), q: query });
+      } catch {
+        if (id === latest) status.textContent = label('lError');
+      }
+    };
+
+    input.addEventListener('input', () => {
+      clearTimeout(timer);
+      const query = input.value.trim();
+      // Warm the index while the reader is still typing.
+      if (query) {
+        load().then(
+          (engine) => engine.preload(query),
+          () => {},
+        );
+      }
+      timer = window.setTimeout(() => run(query), 200);
+    });
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      clearTimeout(timer);
+      run(input.value.trim());
+    });
+
+    const initial = new URLSearchParams(location.search).get('q')?.trim();
+    if (initial) {
+      input.value = initial;
+      run(initial);
+    }
+  }
+</script>
