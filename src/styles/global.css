@@ -372,6 +372,53 @@ html:lang(zh) :is(em, i, cite, dfn, blockquote, address) {
   transform: rotate(-90deg) scale(0.4);
 }
 
+/* The page follows the toggle with a wipe: ThemeToggle.astro wraps the
+   change in a same-document view transition and keeps `data-theme-switch`
+   on <html> while it runs, so the two snapshots of the page are the whole
+   animation and the tokens above stay as they are. The new page comes down
+   over the old one like a blind, behind an edge that fades over 48% of the
+   viewport (24% each side of the line; anything sharper cuts through lines
+   of text). The line is a registered custom property because a gradient
+   stop does not interpolate on its own; it runs from one feather above the
+   top to one below the bottom so the first and last frames are the plain
+   old and new page. The default snapshot animations (a cross-fade in
+   `plus-lighter`) are turned off so the wipe is the only thing happening.
+   The attribute keeps this out of the cross-document transitions
+   (`@view-transition` above), which keep their cross-fade; with reduced
+   motion the script does not start a transition at all. Chosen 2026-08-28
+   over a clockwise sweep, a circle and a diagonal wipe. */
+@property --theme-wipe {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+
+:root[data-theme-switch]::view-transition-old(root),
+:root[data-theme-switch]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+:root[data-theme-switch]::view-transition-new(root) {
+  mask-image: linear-gradient(
+    #000 0%,
+    #000 calc(var(--theme-wipe) - 24%),
+    transparent calc(var(--theme-wipe) + 24%),
+    transparent 100%
+  );
+  animation: theme-wipe 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes theme-wipe {
+  from {
+    --theme-wipe: -24%;
+  }
+
+  to {
+    --theme-wipe: 124%;
+  }
+}
+
 main {
   min-height: 40vh;
 }

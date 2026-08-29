@@ -25,7 +25,9 @@ import { SITE } from '@/lib/site';
  *
  * The script below (inlined by Astro) does the rest: pressing the button
  * advances the state, stores it and updates the attribute, the name and
- * `theme-color`; a change of the OS scheme is followed (`theme-color` and
+ * `theme-color`, inside a view transition that wipes the new page down over
+ * the old one (global.css, `data-theme-switch`); a change of the OS scheme
+ * is followed (`theme-color` and
  * the name depend on it); another tab's choice is picked up through the
  * `storage` event; a page shown from the back/forward cache or the
  * Speculation Rules prerender (which ran the head script earlier, possibly
@@ -113,10 +115,25 @@ const t = useTranslations(lang);
     };
     const sync = () => apply(stored());
 
+    /**
+     * A press changes the page inside a view transition (the wipe in
+     * global.css, keyed on `data-theme-switch`); the other ways the theme
+     * changes (OS, another tab, a restored page) apply at once. Without the
+     * API, or with reduced motion, the press applies at once as well.
+     */
+    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
     button.addEventListener('click', () => {
       const theme = next(current());
       store(theme);
-      apply(theme);
+      if (!document.startViewTransition || reducedMotion.matches) {
+        apply(theme);
+        return;
+      }
+      root.dataset.themeSwitch = '';
+      const transition = document.startViewTransition(() => apply(theme));
+      transition.finished.finally(() => {
+        delete root.dataset.themeSwitch;
+      });
     });
     // The OS scheme decides the page while `auto` and the order of the cycle
     // (so the name) always; re-apply the state the page has.
