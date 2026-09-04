@@ -92,12 +92,8 @@ const variants = [variant('raw', false), variant('escaped', true)];
   {
     variants.map((v) => (
       <div class="sm-result" data-variant={v.name}>
-        <pre class="sm-preview" data-preview>
-          {v.preview.segments.map((s) => (s.wide ? <mark>{s.text}</mark> : s.text))}
-          {v.preview.truncated && (
-            <span class="sm-cut">{fill(t.truncated, { limit: formatCount(PREVIEW_LIMIT) })}</span>
-          )}
-        </pre>
+        {/* prettier-ignore */}
+        <pre class="sm-preview" data-preview>{v.preview.segments.map((s) => (s.wide ? <mark>{s.text}</mark> : s.text))}{v.preview.truncated && <span class="sm-cut">{fill(t.truncated, { limit: formatCount(PREVIEW_LIMIT) })}</span>}</pre>
         <dl class="sm-stats">
           {rows.map((row) => (
             <div>
