@@ -1,4 +1,5 @@
 import type { HastPluginEntry } from 'satteri';
+import { codeTabs } from './code-tabs';
 import { externalLinks } from './external-links';
 import { footnotes } from './footnotes';
 import { headingAnchors } from './heading-anchors';
@@ -6,12 +7,22 @@ import { imageDimensions } from './image-dimensions';
 import { langOfFile } from './lang';
 import { readingTime } from './reading-time';
 
-export { externalLinks, footnotes, headingAnchors, imageDimensions, langOfFile, readingTime };
+export {
+  codeTabs,
+  externalLinks,
+  footnotes,
+  headingAnchors,
+  imageDimensions,
+  langOfFile,
+  readingTime,
+};
 
 /** The full HAST plugin chain used by astro.config.ts, in run order. */
 export function blogHastPlugins(publicDir: string): HastPluginEntry[] {
   return [
     headingAnchors(),
+    // Before Expressive Code (appended after this list): it regroups `pre`s.
+    codeTabs(),
     externalLinks(),
     imageDimensions({ publicDir }),
     readingTime(),

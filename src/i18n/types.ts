@@ -168,6 +168,35 @@ export interface UIStrings {
       /** Tooltip line with a `{pod}` placeholder when nothing was sent yet that day. */
       noSend: string;
     };
+    /** `StringMemory`: labels of the one-byte / two-byte string probe. */
+    stringMemory: {
+      /** Label of the text box. */
+      input: string;
+      /** Checkbox that shows the text with every wide code point escaped. */
+      escape: string;
+      /** Stat: UTF-16 code units. */
+      units: string;
+      /** Stat: UTF-8 size. */
+      utf8: string;
+      /** Stat: code points above U+00FF. */
+      wide: string;
+      /** Value of `wide` when there is none. */
+      none: string;
+      /** Prefix of the `wide` list with a `{count}` placeholder. */
+      wideCount: string;
+      /** Stat: bytes per code unit the engine would use. */
+      width: string;
+      /** Value of `width` for a Latin-1 string. */
+      oneByte: string;
+      /** Value of `width` for a UTF-16 string. */
+      twoByte: string;
+      /** Stat: the payload the string keeps in the heap. */
+      heap: string;
+      /** Note after a preview cut at `{limit}` code units. */
+      truncated: string;
+      /** Usage line under the probe (shown only with JavaScript). */
+      hint: string;
+    };
   };
 
   notFound: {

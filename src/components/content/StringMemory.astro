@@ -1,0 +1,317 @@
+---
+import { DEFAULT_LANG, isLang } from '@/i18n/types';
+import { useTranslations } from '@/i18n';
+import {
+  analyze,
+  codePointLabel,
+  escapeWide,
+  formatBytes,
+  formatCount,
+  segments,
+  type StringAnalysis,
+} from './string-memory';
+
+/**
+ * Interactive probe for the "one character doubles a string" post: a text
+ * box, a preview that marks every code point above U+00FF, and the numbers an
+ * engine would end up with (UTF-16 code units, UTF-8 size, one or two bytes
+ * per unit, heap payload). Two results are rendered for the sample text at
+ * build time, the text as written and the text with those code points written
+ * as `\uXXXX`; a checkbox switches between them with CSS alone, so the probe
+ * reads without JavaScript. The script recomputes both results on every edit
+ * (`string-memory.ts` is shared with this front matter). `image`/`alt` name
+ * the static PNG that the RSS feed shows instead of the component
+ * (`src/lib/mdx.ts`).
+ */
+interface Props {
+  /** Static fallback used by the feed, root-relative. */
+  image: string;
+  /** Accessible name of the probe; also the feed image's alt. */
+  alt: string;
+  /** Text shown at first. */
+  sample?: string;
+}
+
+/** Code units of the text shown in the preview; the stats cover the whole text. */
+const PREVIEW_LIMIT = 2000;
+
+const { alt, sample = 'Status: [✓] Blocking enabled\nGravity: [✗] Update overdue' } = Astro.props;
+const locale = Astro.currentLocale ?? DEFAULT_LANG;
+const t = useTranslations(isLang(locale) ? locale : DEFAULT_LANG).content.stringMemory;
+
+const fill = (template: string, values: Record<string, string>) =>
+  template.replace(/\{(\w+)\}/g, (m, key: string) => values[key] ?? m);
+
+const wideList = (a: StringAnalysis) =>
+  a.wide.length === 0
+    ? t.none
+    : fill(t.wideCount, { count: formatCount(a.wide.length) }) +
+      a.wide.map((w) => `${w.char} ${codePointLabel(w.code)}`).join(', ');
+
+const rows = ['units', 'utf8', 'wide', 'width', 'heap'] as const;
+
+/** One rendered result: the preview and the stat values, keyed like `rows`. */
+function variant(name: string, escape: boolean) {
+  const a = analyze(escape ? escapeWide(sample) : sample);
+  return {
+    name,
+    preview: segments(sample, escape, PREVIEW_LIMIT),
+    stats: {
+      units: formatCount(a.units),
+      utf8: formatBytes(a.utf8),
+      wide: wideList(a),
+      width: a.width === 2 ? t.twoByte : t.oneByte,
+      heap: `${formatBytes(a.heap)} = ${formatCount(a.units)} × ${a.width}`,
+    },
+  };
+}
+const variants = [variant('raw', false), variant('escaped', true)];
+---
+
+<figure
+  class="string-memory"
+  data-string-memory
+  data-limit={PREVIEW_LIMIT}
+  data-l-none={t.none}
+  data-l-wide-count={t.wideCount}
+  data-l-one-byte={t.oneByte}
+  data-l-two-byte={t.twoByte}
+  data-l-truncated={t.truncated}
+  aria-label={alt}
+>
+  <label class="sm-field">
+    <span class="sm-label">{t.input}</span>
+    <textarea data-input rows="3" spellcheck="false" autocomplete="off" set:text={sample} />
+  </label>
+  <div class="sm-tools">
+    <label class="sm-toggle">
+      <input type="checkbox" data-escape />
+      {t.escape}
+    </label>
+  </div>
+  {
+    variants.map((v) => (
+      <div class="sm-result" data-variant={v.name}>
+        <pre class="sm-preview" data-preview>
+          {v.preview.segments.map((s) => (s.wide ? <mark>{s.text}</mark> : s.text))}
+          {v.preview.truncated && (
+            <span class="sm-cut">{fill(t.truncated, { limit: formatCount(PREVIEW_LIMIT) })}</span>
+          )}
+        </pre>
+        <dl class="sm-stats">
+          {rows.map((row) => (
+            <div>
+              <dt>{t[row]}</dt>
+              <dd data-stat={row}>{v.stats[row]}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    ))
+  }
+  <p class="sm-hint" data-hint hidden>{t.hint}</p>
+</figure>
+
+<style is:global>
+  /* Global on purpose: the script rebuilds the preview's children, which
+     would miss Astro's scoped selectors. Everything is under .string-memory. */
+  .string-memory {
+    --wide: light-dark(#c92a2a, #ff8787);
+    --wide-bg: light-dark(rgba(201, 42, 42, 0.12), rgba(255, 135, 135, 0.18));
+    margin: 1.5rem 0;
+    font-size: 0.8125rem;
+  }
+
+  .string-memory .sm-field {
+    display: block;
+  }
+
+  .string-memory .sm-label,
+  .string-memory .sm-tools {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    margin-bottom: 0.35rem;
+    color: var(--muted);
+  }
+
+  .string-memory textarea {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.6em 0.8em;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--code-bg);
+    color: var(--text);
+    font: inherit;
+    font-family: var(--font-mono);
+    font-size: 0.84375rem;
+    line-height: 1.6;
+    resize: vertical;
+  }
+
+  .string-memory textarea:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: -1px;
+  }
+
+  .string-memory .sm-tools {
+    margin: 0.6rem 0;
+  }
+
+  .string-memory .sm-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    cursor: pointer;
+  }
+
+  .string-memory .sm-toggle input {
+    position: relative;
+    top: -1px;
+    margin: 0;
+    accent-color: var(--link);
+  }
+
+  .string-memory .sm-result[data-variant='escaped'],
+  .string-memory:has([data-escape]:checked) .sm-result[data-variant='raw'] {
+    display: none;
+  }
+
+  .string-memory:has([data-escape]:checked) .sm-result[data-variant='escaped'] {
+    display: block;
+  }
+
+  .string-memory .sm-preview {
+    margin: 0;
+    padding: 0.6em 0.8em;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--code-bg);
+    color: var(--text);
+    font-size: 0.84375rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .string-memory .sm-preview mark {
+    padding: 0 0.1em;
+    border-radius: 2px;
+    background: var(--wide-bg);
+    color: var(--wide);
+    font-weight: 600;
+  }
+
+  .string-memory .sm-cut {
+    color: var(--muted);
+  }
+
+  .string-memory .sm-stats {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.3em 1.25em;
+    margin: 0.75rem 0 0;
+  }
+
+  .string-memory .sm-stats div {
+    display: contents;
+  }
+
+  .string-memory .sm-stats dt {
+    color: var(--muted);
+  }
+
+  .string-memory .sm-stats dd {
+    margin: 0;
+    font-family: var(--font-mono);
+    overflow-wrap: anywhere;
+  }
+
+  .string-memory .sm-hint {
+    margin: 0.5rem 0 0;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+</style>
+
+<script>
+  import {
+    analyze,
+    codePointLabel,
+    escapeWide,
+    formatBytes,
+    formatCount,
+    segments,
+    type StringAnalysis,
+  } from './string-memory';
+
+  function fill(template: string, values: Record<string, string>): string {
+    return template.replace(/\{(\w+)\}/g, (m, key: string) => values[key] ?? m);
+  }
+
+  function init(fig: HTMLElement): void {
+    const input = fig.querySelector<HTMLTextAreaElement>('[data-input]');
+    const hint = fig.querySelector<HTMLElement>('[data-hint]');
+    if (!input || !hint) return;
+    const limit = Number(fig.dataset.limit) || 2000;
+    const l = {
+      none: fig.dataset.lNone ?? '',
+      wideCount: fig.dataset.lWideCount ?? '',
+      oneByte: fig.dataset.lOneByte ?? '',
+      twoByte: fig.dataset.lTwoByte ?? '',
+      truncated: fig.dataset.lTruncated ?? '',
+    };
+
+    const wideList = (a: StringAnalysis) =>
+      a.wide.length === 0
+        ? l.none
+        : fill(l.wideCount, { count: formatCount(a.wide.length) }) +
+          a.wide.map((w) => `${w.char} ${codePointLabel(w.code)}`).join(', ');
+
+    const results = [...fig.querySelectorAll<HTMLElement>('[data-variant]')].map((el) => ({
+      escape: el.dataset.variant === 'escaped',
+      preview: el.querySelector<HTMLElement>('[data-preview]'),
+      stat: (name: string) => el.querySelector<HTMLElement>(`[data-stat="${name}"]`),
+    }));
+
+    const render = () => {
+      const text = input.value;
+      for (const r of results) {
+        const a = analyze(r.escape ? escapeWide(text) : text);
+        const preview = segments(text, r.escape, limit);
+        r.preview?.replaceChildren(
+          ...preview.segments.map((s) => {
+            if (!s.wide) return document.createTextNode(s.text);
+            const mark = document.createElement('mark');
+            mark.textContent = s.text;
+            return mark;
+          }),
+          ...(preview.truncated
+            ? [
+                Object.assign(document.createElement('span'), {
+                  className: 'sm-cut',
+                  textContent: fill(l.truncated, { limit: formatCount(limit) }),
+                }),
+              ]
+            : []),
+        );
+        const set = (name: string, value: string) => {
+          const el = r.stat(name);
+          if (el) el.textContent = value;
+        };
+        set('units', formatCount(a.units));
+        set('utf8', formatBytes(a.utf8));
+        set('wide', wideList(a));
+        set('width', a.width === 2 ? l.twoByte : l.oneByte);
+        set('heap', `${formatBytes(a.heap)} = ${formatCount(a.units)} × ${a.width}`);
+      }
+    };
+
+    input.addEventListener('input', render);
+    hint.hidden = false;
+  }
+
+  for (const fig of document.querySelectorAll<HTMLElement>('[data-string-memory]')) init(fig);
+</script>

@@ -105,6 +105,21 @@ export const zh: UIStrings = {
       lastSend: 'pod {pod}: 最近一次发送 {time}，{delta} s 前',
       noSend: 'pod {pod}: 当天还没有发送',
     },
+    stringMemory: {
+      input: '文本',
+      escape: '把超出 Latin-1 的字符写成 \\uXXXX',
+      units: 'UTF-16 码元',
+      utf8: 'UTF-8',
+      wide: '超出 Latin-1',
+      none: '没有',
+      wideCount: '{count} 个: ',
+      width: '引擎表示',
+      oneByte: '每码元 1 字节 (Latin-1)',
+      twoByte: '每码元 2 字节 (UTF-16)',
+      heap: '堆内存 (不含对象头)',
+      truncated: '(只显示前 {limit} 个码元)',
+      hint: '改一改文本，或者粘贴一段你自己的 JSON 试试。',
+    },
   },
 
   notFound: {

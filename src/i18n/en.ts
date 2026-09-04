@@ -106,6 +106,21 @@ export const en: UIStrings = {
       lastSend: 'pod {pod}: last produce {time}, {delta} s ago',
       noSend: 'pod {pod}: no produce yet',
     },
+    stringMemory: {
+      input: 'Text',
+      escape: 'Write every character above Latin-1 as \\uXXXX',
+      units: 'UTF-16 code units',
+      utf8: 'UTF-8',
+      wide: 'Above Latin-1',
+      none: 'none',
+      wideCount: '{count}: ',
+      width: 'Engine representation',
+      oneByte: '1 byte per unit (Latin-1)',
+      twoByte: '2 bytes per unit (UTF-16)',
+      heap: 'Heap (payload only)',
+      truncated: '(first {limit} code units shown)',
+      hint: 'Edit the text, or paste some JSON of your own.',
+    },
   },
 
   notFound: {

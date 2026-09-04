@@ -41,3 +41,71 @@ pre:not(.expressive-code pre) {
 .expressive-code {
   margin: 1.25em 0;
 }
+
+/* Tabbed code blocks (src/plugins/code-tabs.ts): a bar of radio buttons in
+   labels, then one panel per fence. Switching is `:has(input:checked)`; a
+   browser without `:has` shows every panel, one under the other. The bar
+   copies Expressive Code's editor tab bar (ec.config.mjs) and replaces the
+   per-block header, which is hidden inside a group. Up to 8 tabs. */
+.code-tabs {
+  margin: 1.25em 0;
+}
+
+.code-tabs-bar {
+  display: flex;
+  flex-wrap: wrap;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  background: light-dark(#ececec, #0d0d0d);
+  border: 1px solid var(--border);
+  border-radius: 6px 6px 0 0;
+}
+
+.code-tabs-bar label {
+  position: relative;
+  padding: 0.4rem 1rem;
+  color: var(--muted);
+  cursor: pointer;
+  border-top: 2px solid transparent;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.code-tabs-bar input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: inherit;
+}
+
+.code-tabs-bar label:has(input:checked) {
+  color: var(--text);
+  background: var(--code-bg);
+  border-top-color: var(--link);
+  border-bottom-color: var(--code-bg);
+}
+
+.code-tabs-bar label:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.code-tabs:has(input:checked) > .code-tabs-panel {
+  display: none;
+}
+
+.code-tabs .expressive-code {
+  margin: 0;
+}
+
+/* Beats EC's `.frame.has-title:not(.is-terminal) .header { display: flex }`. */
+.code-tabs .expressive-code .frame.has-title:not(.is-terminal) .header {
+  display: none;
+}
+
+.code-tabs .expressive-code .frame pre {
+  border-top: none;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}

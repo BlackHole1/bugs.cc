@@ -19,4 +19,10 @@ describe('mdxToMarkdown', () => {
     );
     expect(mdxToMarkdown('<CpuDayChart alt="no image" />')).toBe('');
   });
+
+  it('turns <StringMemory> into its static image', () => {
+    expect(mdxToMarkdown('<StringMemory image="/images/x/probe.png" alt="probe" />')).toBe(
+      '![probe](/images/x/probe.png)',
+    );
+  });
 });
