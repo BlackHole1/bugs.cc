@@ -41,7 +41,9 @@ describe('code-tabs', () => {
   });
 
   it('numbers groups per document and separates runs', async () => {
-    const md = [fence('a', '1'), fence('b', '2'), 'text', fence('c', '3'), fence('d', '4')].join('\n\n');
+    const md = [fence('a', '1'), fence('b', '2'), 'text', fence('c', '3'), fence('d', '4')].join(
+      '\n\n',
+    );
     const { html } = await compile(md, [codeTabs()]);
     expect(html.match(/name="code-tabs-1"/g)).toHaveLength(2);
     expect(html.match(/name="code-tabs-2"/g)).toHaveLength(2);

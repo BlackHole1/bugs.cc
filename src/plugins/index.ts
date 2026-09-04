@@ -7,7 +7,15 @@ import { imageDimensions } from './image-dimensions';
 import { langOfFile } from './lang';
 import { readingTime } from './reading-time';
 
-export { codeTabs, externalLinks, footnotes, headingAnchors, imageDimensions, langOfFile, readingTime };
+export {
+  codeTabs,
+  externalLinks,
+  footnotes,
+  headingAnchors,
+  imageDimensions,
+  langOfFile,
+  readingTime,
+};
 
 /** The full HAST plugin chain used by astro.config.ts, in run order. */
 export function blogHastPlugins(publicDir: string): HastPluginEntry[] {

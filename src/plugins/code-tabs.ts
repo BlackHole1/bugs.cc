@@ -108,7 +108,12 @@ function buildTabs(fences: GroupedFence[], group: number): Element {
     tagName: 'div',
     properties: { className: ['code-tabs'] },
     children: [
-      { type: 'element', tagName: 'div', properties: { className: ['code-tabs-bar'] }, children: labels },
+      {
+        type: 'element',
+        tagName: 'div',
+        properties: { className: ['code-tabs-bar'] },
+        children: labels,
+      },
       ...panels,
     ],
   };
@@ -155,7 +160,8 @@ export function codeTabs() {
               const lastIndex = children.indexOf(lastPre);
               ctx.replaceNode(first.pre, buildTabs(run, ++group));
               for (const { pre } of run.slice(1)) ctx.removeNode(pre);
-              for (const node of between) if (children.indexOf(node) < lastIndex) ctx.removeNode(node);
+              for (const node of between)
+                if (children.indexOf(node) < lastIndex) ctx.removeNode(node);
               i = lastIndex + 1;
             } else {
               i++;

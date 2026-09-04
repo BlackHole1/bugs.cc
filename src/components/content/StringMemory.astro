@@ -35,8 +35,7 @@ interface Props {
 /** Code units of the text shown in the preview; the stats cover the whole text. */
 const PREVIEW_LIMIT = 2000;
 
-const { alt, sample = 'Status: [✓] Blocking enabled\nGravity: [✗] Update overdue' } =
-  Astro.props;
+const { alt, sample = 'Status: [✓] Blocking enabled\nGravity: [✗] Update overdue' } = Astro.props;
 const locale = Astro.currentLocale ?? DEFAULT_LANG;
 const t = useTranslations(isLang(locale) ? locale : DEFAULT_LANG).content.stringMemory;
 
@@ -82,8 +81,7 @@ const variants = [variant('raw', false), variant('escaped', true)];
 >
   <label class="sm-field">
     <span class="sm-label">{t.input}</span>
-    <textarea data-input rows="3" spellcheck="false" autocomplete="off" set:text={sample}
-    ></textarea>
+    <textarea data-input rows="3" spellcheck="false" autocomplete="off" set:text={sample} />
   </label>
   <div class="sm-tools">
     <label class="sm-toggle">
@@ -94,7 +92,12 @@ const variants = [variant('raw', false), variant('escaped', true)];
   {
     variants.map((v) => (
       <div class="sm-result" data-variant={v.name}>
-        <pre class="sm-preview" data-preview>{v.preview.segments.map((s) => (s.wide ? <mark>{s.text}</mark> : s.text))}{v.preview.truncated && <span class="sm-cut">{fill(t.truncated, { limit: formatCount(PREVIEW_LIMIT) })}</span>}</pre>
+        <pre class="sm-preview" data-preview>
+          {v.preview.segments.map((s) => (s.wide ? <mark>{s.text}</mark> : s.text))}
+          {v.preview.truncated && (
+            <span class="sm-cut">{fill(t.truncated, { limit: formatCount(PREVIEW_LIMIT) })}</span>
+          )}
+        </pre>
         <dl class="sm-stats">
           {rows.map((row) => (
             <div>

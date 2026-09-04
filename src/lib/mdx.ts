@@ -22,9 +22,12 @@ export function mdxToMarkdown(body: string): string {
       const url = `https://www.youtube.com/watch?v=${id}`;
       return `[YouTube: ${url}](${url})`;
     })
-    .replace(/<(?:CpuDayChart|StringMemory)\b([^>]*?)\/?>(?:\s*<\/(?:CpuDayChart|StringMemory)>)?/g, (tag) => {
-      const image = attr(tag, 'image');
-      if (!image) return '';
-      return `![${attr(tag, 'alt') ?? ''}](${image})`;
-    });
+    .replace(
+      /<(?:CpuDayChart|StringMemory)\b([^>]*?)\/?>(?:\s*<\/(?:CpuDayChart|StringMemory)>)?/g,
+      (tag) => {
+        const image = attr(tag, 'image');
+        if (!image) return '';
+        return `![${attr(tag, 'alt') ?? ''}](${image})`;
+      },
+    );
 }
