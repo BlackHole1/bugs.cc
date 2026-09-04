@@ -1,0 +1,420 @@
+---
+title: 6.47 MB 的 JS 字符串占了 15.4 MB 内存
+date: 2026-09-04T19:30:00+08:00
+tags:
+  - javascript
+  - bun
+  - cloudflare workers
+translationKey: one-character-doubles-js-string-memory
+---
+
+import StringMemory from '../../../components/content/StringMemory.astro';
+
+[open-connector] 是我们在做的一个开源项目，把 1464 个第三方 API (Slack、GitHub、飞书这些) 包装成统一的 action 接口。每个第三方叫一个 provider，它有哪些 action、每个 action 的输入输出长什么样 (JSON Schema)，都写在一个 JSON 文件里。这堆文件叫 catalog，服务启动时会加载进内存。
+
+最近在给它的 Bun 单文件二进制压常驻内存，把启动后的 RSS 从 378 MiB 压到了 293 MiB ([open-connector#490])。排查的时候发现，堆里最大的单个对象是一个 JSON 字符串: 6,471,221 个字符，按 UTF-8 算是 6.47 MB，在 JavaScriptCore 的堆里却占了 15.4 MB。原因是这 647 万个字符里，有 49 个超出了 Latin-1 的范围。
+
+后来看 Cloudflare Workers 上的堆，也是同样的原因: 2 个字符让 14.5 MB 的脚本占了 27.6 MiB。记录一下。
+
+**环境:**
+
+- macOS arm64
+- Bun 1.4.0 (JavaScriptCore)
+- Node 26.7.0 (V8)
+- esbuild 0.28.x，wrangler 4.127.1
+
+## 现象 \{#symptom\}
+
+服务启动时会把 catalog 里每个 provider 的摘要 (名字、描述、有哪些 action，不含 schema) `JSON.stringify` 一次缓存起来，作为 `/api/providers` 的响应体，之后每次请求原样发出去。这个字符串就是 `providerSummariesJson`，6,471,221 个字符。
+
+排查内存的时候，我用 `bun:jsc` 的 `heapStats()` 对比了加载 catalog 前后的堆，再单独把这个字符串置空，确认它一个就占了 15.4 MB。
+
+catalog 有两种加载方式。默认是启动时把每个 provider 的 JSON Schema 一起读进内存；也可以只留下名字、描述和 action 列表，schema 等真正用到某个 action 时再读对应的文件。后一种情况下，整个 JS 堆只有 26.4 MiB，光这一个字符串就超过一半。
+
+6.47 MB 的文本占 15.4 MB，差不多是两倍。扫一遍这个字符串里码点大于 U+00FF 的字符:
+
+```js
+const tally = new Map();
+for (const ch of text) {
+  if (ch.codePointAt(0) > 0xff) tally.set(ch, (tally.get(ch) ?? 0) + 1);
+}
+```
+
+```text
+chars: 6471221, non-Latin-1 code points: 49
+U+2014 "—" x13
+U+2022 "•" x12
+U+2192 "→" x3
+U+8868 "表" x2
+U+5E7F "广" x2
+...
+```
+
+49 个字符: 13 个 em dash，12 个圆点，3 个箭头，剩下 21 个是几个国内 provider 描述里的汉字。这 49 个字符来自 17 个 provider 文件，其余 1447 个文件全是 ASCII。就是这 49 个字符，让整个字符串的每一个字符都按 2 字节存了。
+
+## 为什么是两倍 \{#why-two-bytes\}
+
+ECMAScript 规范里字符串是 16 位码元的序列，但引擎并不会每个字符都用 2 字节。V8 有 `SeqOneByteString` 和 `SeqTwoByteString` 两种表示，JavaScriptCore 的 `StringImpl` 有 `is8Bit()` 的 8 位和 16 位两种。规则是一样的: 字符串里每一个字符都小于等于 U+00FF，就按每字符 1 字节存；只要有一个超过，整段都按每字符 2 字节存。V8 源码里这个上限叫 `kMaxOneByteCharCode = 0xFF`。
+
+这个上限是 Latin-1，不是 ASCII。`é` (U+00E9) 不是 ASCII，但码点仍然小于等于 U+00FF，所以还是 1 字节。真正会让整段变成 2 字节的，是超过 U+00FF 的字符，比如 em dash (U+2014)、圆点 (U+2022)、箭头 (U+2192)、汉字、emoji。所以 647 万个字符里混进 1 个汉字，整段都会翻倍。
+
+写个脚本验证一下。800 万个纯 ASCII 字符，末尾分别加一个 `é` 和一个 `中`，看堆增长了多少:
+
+```js title="demo.mjs"
+import v8 from "node:v8";
+
+function heap() {
+  globalThis.gc();
+  globalThis.gc();
+  return v8.getHeapStatistics().used_heap_size;
+}
+
+function build(extra) {
+  const s = "abcdefgh".repeat(1_000_000) + extra;
+  s.charCodeAt(s.length - 1); // 把 rope 摊平，见下文 // [!code highlight]
+  return s;
+}
+
+const base = heap();
+const ascii = build("");
+const h1 = heap();
+const latin = build("é");
+const h2 = heap();
+const cjk = build("中");
+const h3 = heap();
+console.log(`8,000,000 x ASCII        : heap +${((h1 - base) / 1048576).toFixed(1)} MiB`);
+console.log(`same + one "é" (U+00E9)  : heap +${((h2 - h1) / 1048576).toFixed(1)} MiB`);
+console.log(`same + one "中" (U+4E2D) : heap +${((h3 - h2) / 1048576).toFixed(1)} MiB`);
+globalThis.keep = [ascii, latin, cjk];
+```
+
+```text
+$ node --expose-gc demo.mjs
+8,000,000 x ASCII        : heap +7.6 MiB
+same + one "é" (U+00E9)  : heap +7.6 MiB
+same + one "中" (U+4E2D) : heap +15.3 MiB
+```
+
+把 `heap()` 换成 `Bun.gc(true)` 加 `process.memoryUsage().heapUsed`，在 Bun 1.4.0 上跑出来的三个数字也是 7.6、7.6、15.3。两个引擎的结果一样。
+
+<StringMemory image="/images/one-character-doubles-js-string-memory/string-memory.png" alt="输入文本，显示超出 Latin-1 的字符和堆内存估算" />
+
+红色标出来的是超出 Latin-1 的字符。
+
+V8 还可以直接看到类型:
+
+```text
+$ node --allow-natives-syntax -e '%DebugPrint("abc" + "é"); %DebugPrint("abc" + "中")'
+DebugPrint: 0xd0faee56981: [String] in OldSpace: "abc\xe9"
+ - type: SEQ_ONE_BYTE_STRING_TYPE
+DebugPrint: 0xd0faee56999: [String] in OldSpace: u"abc\u4e2d"
+ - type: SEQ_TWO_BYTE_STRING_TYPE
+```
+
+脚本里那行 `charCodeAt` 是必要的。`a + b` 在两个引擎里都不会立刻拷贝，而是生成一个 rope (V8 叫 `ConsString`，JSC 叫 `JSRopeString`)，左右两半各自保持原来的表示。这时候 800 万个 ASCII 字符仍然是 1 字节的。但只要对它按下标、跑正则、调用 `indexOf`，或者当作 HTTP 响应体写出去，引擎就会把 rope 摊平成一段连续内存，这时候才按最宽的字符决定整段用几字节。不加这行的话，三个数字全是 7.6。
+
+rope 本身也能用 `%DebugPrint` 看到:
+
+```text
+$ node --allow-natives-syntax -e 'const s = "abcdefgh".repeat(4) + "中"; %DebugPrint(s)'
+DebugPrint: 0x1be004ae841: [String]: uc"abcdefghabcdefghabcdefghabcdefgh\u4e2d"
+ - type: CONS_TWO_BYTE_STRING_TYPE
+```
+
+前缀里的 `c` 是 cons。拼接的一瞬间 V8 就把这个 rope 标成了 2 字节，因为右半边是 2 字节的，但左半边那些 ASCII 字符还是原来那块 1 字节内存。真正按 2 字节重新拷贝一份，发生在摊平的时候。
+
+两个引擎的规则都能在源码里看到。V8 的 `String` 类注释里写了规范的定义，以及 1 字节的上限和两种顺序存储的字符类型 ([string.h]、[unicode.h]):
+
+```cpp title="v8/src/objects/string.h" group
+// The String abstract class captures JavaScript string values:
+//
+// Ecma-262:
+//  4.3.16 String Value
+//    A string value is a member of the type String and is a finite
+//    ordered sequence of zero or more 16-bit unsigned integer values.
+V8_OBJECT class String : public Name {
+  // ...
+  // Max char codes.
+  static const int32_t kMaxOneByteCharCode = unibrow::Latin1::kMaxChar; // [!code highlight]
+  static const int kMaxUtf16CodeUnit = 0xffff;
+};
+
+V8_OBJECT class SeqOneByteString : public SeqString {
+  static const bool kHasOneByteEncoding = true;
+  using Char = uint8_t; // [!code highlight]
+};
+
+V8_OBJECT class SeqTwoByteString : public SeqString {
+  static const bool kHasOneByteEncoding = false;
+  using Char = uint16_t; // [!code highlight]
+};
+```
+
+```cpp title="v8/src/strings/unicode.h" group
+class Latin1 {
+ public:
+  static const uint16_t kMaxChar = 0xff;
+};
+```
+
+WebKit 里是一个 `StringImpl` 带一个标志位，数据指针是一个 union，同一个字符串同一时刻只能是其中一种 ([StringImpl.h]):
+
+```cpp title="WebKit/Source/WTF/wtf/text/StringImpl.h"
+static constexpr const unsigned s_hashFlag8BitBuffer = 1u << 2;
+// ...
+bool is8Bit() const { return m_hashAndFlags & s_hashFlag8BitBuffer; } // [!code highlight]
+// ...
+std::atomic<uint32_t> m_refCount;
+unsigned m_length;
+union { // [!code highlight:4]
+    const Latin1Character* m_data8;
+    const char16_t* m_data16;
+};
+```
+
+`JSON.stringify` 不会转义非 ASCII 字符。它只转义引号、反斜杠、控制字符和落单的代理对。所以只要 JSON 里有一段中文描述，`JSON.stringify` 出来的整个字符串就是 2 字节的，不管其余部分是不是 ASCII。
+
+`JSON.parse` 不受这个影响。解析出来的每个字符串值都是独立的字符串，各自选表示:
+
+```text
+$ node --allow-natives-syntax -e 'const o = JSON.parse(`{"a":"abcdefghabcdefgh","b":"abcdefghabcdefgh中"}`); %DebugPrint(o.a); %DebugPrint(o.b)'
+DebugPrint: 0x19f36672e771: [String]: "abcdefghabcdefgh"
+ - type: SEQ_ONE_BYTE_STRING_TYPE
+DebugPrint: 0x19f36672e791: [String]: u"abcdefghabcdefgh\u4e2d"
+ - type: SEQ_TWO_BYTE_STRING_TYPE
+```
+
+所以 catalog 解析成对象之后，只有那 17 个 provider 里带汉字和 em dash 的描述字段是 2 字节的，其他字段该 1 字节还是 1 字节。翻倍只发生在序列化出来的那一整段文本上。
+
+## 修复 \{#fix-bytes\}
+
+这个字符串的用途只有一个: 作为 HTTP 响应体原样发出去。发出去的时候本来就要编码成 UTF-8 字节，所以干脆在启动时就编码好，堆里只留 `Uint8Array`:
+
+```ts title="src/catalog-store.ts" del={2} ins={3-4}
+return {
+  providerSummariesJson,
+  // TextEncoder rather than Buffer: the Cloudflare Workers build shares this function.
+  providerSummariesJson: new TextEncoder().encode(providerSummariesJson),
+  providerSummariesEtag: weakEtag(providerSummariesJson),
+```
+
+`Uint8Array` 存在 `ArrayBuffer` 里，按字节算，6.47 MB 就是 6.47 MB。
+
+`/api/providers` 带了 ETag，浏览器和 CDN 拿它判断缓存要不要作废。这个值是对 JSON 字符串做哈希得到的，哈希的是 UTF-16 码元，不是 UTF-8 字节。如果改成对字节算，已经缓存过这个接口的客户端会认为内容变了，6.47 MB 会重新拉一遍。所以哈希仍然用编码前的字符串来算，算完字符串就可以丢掉。改之前这个接口的 ETag 是 `W/"62be35-aa331d99"`，改完还是这一个，响应正文也和原来逐字节相同。
+
+效果: 只留名字、描述和 action 列表的那种加载方式下，JSC 堆从 26.4 MiB 降到 17.2 MiB；schema 也放在内存里的默认方式从 74.7 MiB 降到 65.5 MiB。不过 macOS 上 `ps` 报的 RSS 没有变化。Bun 用的 mimalloc 释放内存之后不会立刻把页还给系统，所以 `ps` 看到的数字不会跟着掉。
+
+如果必须留一个字符串，可以把非 ASCII 字符转义成 `\uXXXX` 写进 JSON 文本里。这仍然是合法的 JSON，解析出来的值不变，49 个字符各多占 5 个字符，整段就能回到 1 字节。在这份 catalog 上试了一下 (字符串已经长到 6,472,664 个字符)，中间还踩了一个坑:
+
+```js
+const escaped = json.replace(/[\u0100-\uffff]/g, (c) => "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0"));
+```
+
+```text
+json                                 : 6,472,664 chars, heap +12.34 MiB, SEQ_TWO_BYTE_STRING_TYPE
+escaped = json.replace(...)          : 6,472,909 chars, heap +12.35 MiB, SEQ_TWO_BYTE_STRING_TYPE
+JSON.parse(JSON.stringify(escaped))  : 6,472,909 chars, heap  +6.17 MiB, SEQ_ONE_BYTE_STRING_TYPE
+```
+
+转义完的字符串里已经没有任何一个大于 U+00FF 的字符了，但 `replace()` 的结果仍然是 2 字节的。原因在两个引擎的实现里。V8 带回调的 `replace` 走 `Runtime_RegExpReplaceRT`，结果是用原字符串的子串和每段替换文本拼出来的 ([runtime-regexp.cc]):
+
+```cpp title="v8/src/runtime/runtime-regexp.cc"
+RUNTIME_FUNCTION(Runtime_RegExpReplaceRT) {
+  // ...
+  const bool functional_replace = IsCallable(*replace_obj);
+  // ...
+  IncrementalStringBuilder builder(isolate);
+  // ...
+    if (position >= next_source_position) {
+      builder.AppendString( // [!code highlight:3]
+          factory->NewSubString(string, next_source_position, position));
+      builder.AppendString(replacement);
+```
+
+`NewSubString` 从一个 2 字节的 `string` 上切出来的子串还是 2 字节的，它沿用的是父串的表示，不看内容。`IncrementalStringBuilder` 一旦追加过一段 2 字节的内容就切到 2 字节，不会再切回去。所以只要原串是 2 字节，结果一定是 2 字节。
+
+JSC 的 `replace` 最后都走到 `jsSpliceSubstringsWithSeparators`，它只看源串的标志位和每段替换文本的标志位 ([StringPrototypeInlines.h]):
+
+```cpp title="WebKit/Source/JavaScriptCore/runtime/StringPrototypeInlines.h"
+bool allSeparators8Bit = true;
+for (int i = 0; i < separatorCount; i++) {
+    totalLength += separators[i].length();
+    if (separators[i].length() && !separators[i].is8Bit())
+        allSeparators8Bit = false;
+}
+// ...
+if (source.is8Bit() && allSeparators8Bit) { // [!code highlight]
+    std::span<Latin1Character> buffer;
+    auto impl = StringImpl::tryCreateUninitialized(totalLength, buffer);
+```
+
+`source.is8Bit()` 是源串创建时就定下来的标志位。被替换掉的那 49 个字符已经不在结果里了，但标志位还在，所以结果还是按 16 位开 buffer。两个引擎都是这样: 从旧字符串派生出来的新字符串，会继承父串的宽度。要让引擎重新按内容选表示，需要再生成一个新字符串，比如 `JSON.parse(JSON.stringify(escaped))`，或者先编码成字节再解码回来，这之后才是 6.17 MiB。Bun 上跑出来的三组数字和这里一样。
+
+我们最后没走这条路，除了存字节更直接，还有一个原因: 留字符串的话每次响应都要重新编码一遍。6.47 MB 做一次 `TextEncoder.encode()`，在上面的 macOS arm64 上测下来是 3.1 ms，而字节可以直接写进 socket。
+
+另外有个测量上的坑。Node 里 `TextDecoder.decode()` 出来的大字符串是 `EXTERNAL_TWO_BYTE_STRING_TYPE`，数据在 V8 堆外，`v8.getHeapStatistics().used_heap_size` 看不到它，要看 `process.memoryUsage().external`。我第一次量的时候堆增长是 0，就是漏了这一块。
+
+## Cloudflare Workers 上的脚本源码 \{#workers\}
+
+open-connector 同一份代码也部署在 Cloudflare Workers 上。Workers 的每个脚本跑在一个 V8 isolate 里，isolate 的堆上限是 128 MB，超了整个 isolate 会被回收重建。压完二进制之后我顺手查了一下这边到底占多少，用 `wrangler dev` 起服务，通过 inspector 端口发 `Runtime.getHeapUsage` 和 `HeapProfiler.takeHeapSnapshot`。
+
+生产形态 (`wrangler deploy --minify`) 的稳态堆是 88.7 MiB，快照里最大的单个节点是一个 27.63 MiB 的字符串: 整个 Worker 脚本的源码。脚本文件本身是 14.5 MB。
+
+V8 会把脚本源码一直留在堆里，因为它的编译是惰性的: 加载时只预解析，函数第一次被调用才真正编译，而且长时间没跑的函数字节码还会被丢掉，下次调用再从源码重新编译。所以源码必须留着。
+
+源码进 isolate 的时候用哪种表示，写在 workerd (Workers 的开源运行时) 的 [modules-new.c++] 里:
+
+```cpp title="workerd/src/workerd/jsg/modules-new.c++"
+// The source text of an ES module in the representation handed to V8 for
+// compilation. V8 has no internal UTF-8 string representation — strings are
+// either one-byte (Latin-1) or two-byte (UTF-16). Worker bundle sources arrive
+// as UTF-8 bytes, so each module's source is encoded once, lazily, on first
+// compile, and the result is shared by every isolate that compiles the module:
+//
+//  * Pure-ASCII source (the overwhelmingly common case — bundlers typically
+//    escape non-ASCII): the original buffer directly backs a one-byte external
+//    string. Zero copies.
+//  * Non-ASCII source whose code points all fit in Latin-1: transcoded once to
+//    a one-byte buffer, matching the representation V8 itself would choose for
+//    the same text.
+//  * Anything else (CJK, emoji, ...): transcoded once to UTF-16.
+// ...
+EncodedSource transcodeSource(kj::ArrayPtr<const char> source) {
+  if (simdutf::validate_utf8(source.begin(), source.size())) {
+    // Valid UTF-8. Prefer the half-size Latin-1 representation when every code
+    // point permits it. The buffer is sized exactly, so with already-validated
+    // input a zero return can only mean some code point exceeds U+00FF.
+    auto latin1 =
+        kj::heapArray<char>(simdutf::latin1_length_from_utf8(source.begin(), source.size()));
+    if (simdutf::convert_utf8_to_latin1(source.begin(), source.size(), latin1.begin()) != 0) { // [!code highlight]
+      return {.repr = kj::arc<OwnedAscii>(kj::mv(latin1))};
+    }
+
+    auto utf16 =
+        kj::heapArray<uint16_t>(simdutf::utf16_length_from_utf8(source.begin(), source.size()));
+    // ...
+    return {.repr = kj::arc<OwnedUtf16>(kj::mv(utf16))}; // [!code highlight]
+  }
+  // ...
+}
+```
+
+注释里提到"打包器通常会把非 ASCII 转义掉"。旧的模块注册表走的是 `v8::String::NewFromUtf8`，选表示的规则一样。14,483,642 个字符乘 2，正好是 27.63 MiB。
+
+但源码不一定要按 2 字节存。扫一遍这 14.5 MB 的脚本，码点大于 U+00FF 的字符只有 2 个: 一个 `✗` (U+2717) 和一个 `✓` (U+2713)，都在 Pi-hole 这个 provider 解析命令行输出的正则里:
+
+```ts title="src/providers/pi_hole/runtime.ts"
+function readGravityStatus(text: string): string | null {
+  if (/\[✗\]|\berror\b|\bfatal\b|\bfailed\b/i.test(text)) {
+    return "failed";
+  }
+  if (/\[✓\]\s*done|\bdone\.?\s*$/im.test(text.trimEnd())) {
+    return "success";
+  }
+  return null;
+}
+```
+
+代码库里其他地方有大量中文字符串，为什么最后只剩这 2 个? 因为 esbuild 默认的 [charset] 是 `ascii`，打印字符串字面量的时候，大于 0xFF 的字符写成 `\uXXXX`，0x80 到 0xFF 的写成 `\xXX`。而正则字面量在打印器里就是一行 `p.print(e.Value)`，原样输出 ([js_printer.go]):
+
+```go title="js_printer.go: 字符串字面量" group
+// Is this an unpaired low surrogate or four-digit hex escape?
+case (c >= firstLowSurrogate && c <= lastLowSurrogate) || (p.options.ASCIIOnly && c > 0xFF): // [!code highlight]
+	js = append(js, '\\', 'u', hexChars[c>>12], hexChars[(c>>8)&15], hexChars[(c>>4)&15], hexChars[c&15])
+
+// Can this be a two-digit hex escape?
+case p.options.ASCIIOnly:
+	js = append(js, '\\', 'x', hexChars[c>>4], hexChars[c&15])
+```
+
+```go title="js_printer.go: 正则字面量" group
+case *js_ast.ERegExp:
+	// ...
+	p.addSourceMapping(expr.Loc)
+	p.print(e.Value) // [!code highlight]
+```
+
+文档里也写明了这一点: 目前不会转义正则里的非 ASCII 字符，因为 esbuild 根本不解析正则的内容。效果就是:
+
+```js
+const ok = "[✓] done";
+const re = /\[✓\]\s*done/;
+```
+
+```js
+// esbuild --minify
+const o="[\u2713] done",e=/\[✓\]\s*done/;
+```
+
+于是这 2 个字符让 V8 把整个 14.5 MB 的脚本按 2 字节存，27.63 MiB。所以在正则里也手写转义 ([open-connector#493]):
+
+```ts title="src/providers/pi_hole/runtime.ts" del={2,6} ins={3,7}
+function readGravityStatus(text: string): string | null {
+  if (/\[✗\]|\berror\b|\bfatal\b|\bfailed\b/i.test(text)) {
+  if (/\[\u2717\]|\berror\b|\bfatal\b|\bfailed\b/i.test(text)) {
+    return "failed";
+  }
+  if (/\[✓\]\s*done|\bdone\.?\s*$/im.test(text.trimEnd())) {
+  if (/\[\u2713\]\s*done|\bdone\.?\s*$/im.test(text.trimEnd())) {
+    return "success";
+  }
+  return null;
+}
+```
+
+正则的语义完全一样，只是源码文本回到了纯 ASCII。同一台机器同一份构建，改前改后各量一次:
+
+```text
+isolate 堆，首请求前      : 40.56 MiB -> 26.74 MiB
+isolate 堆，稳态强制 GC 后 : 88.69 MiB -> 74.82 MiB
+```
+
+省下的 13.8 MiB 正好等于脚本文件的大小。另外加了一个测试，扫描 `src/` 下所有正则字面量，出现 U+00FF 以上的字符就报文件和行号，以后谁再往正则里写一个箭头，CI 会先挂。
+
+另外两点:
+
+- 前面说的 Bun 单文件二进制，里面打包出来的 30 MB JS 没有这个问题。Bun 的打包器在 target 是 `bun` 的时候会把所有非 ASCII 都转义，连正则字面量里的也一起改写，输出是纯 ASCII。同一个文件 target 换成 `browser` 或者 `node` 就原样输出，和 esbuild 一样:
+
+  ```text
+  $ bun build --minify --target=bun in.js
+  var o="[\u2713] done",e=/\[\u2713\]\s*done/;export{o as ok,e as re};
+  $ bun build --minify --target=browser in.js
+  var o="[✓] done",e=/\[✓\]\s*done/;export{o as ok,e as re};
+  ```
+
+  所以在二进制里翻倍的只有数据字符串，在 Workers 里翻倍的是源码。
+- `wrangler dev` 不加 `--minify` 的开发构建里有 2909 个非 Latin-1 字符，绝大部分在注释里，源码字符串是 58 MiB。所以量 Workers 内存一定要用生产形态，开发形态的数字没有参考价值。
+
+## 怎么查 \{#how-to-check\}
+
+判断一个字符串会不会按 2 字节存:
+
+```js
+/[^\u0000-\u00ff]/u.test(s);
+```
+
+V8 上可以直接看类型，`node --allow-natives-syntax` 然后 `%DebugPrint(s)`，输出里是 `SEQ_ONE_BYTE_STRING_TYPE` 还是 `SEQ_TWO_BYTE_STRING_TYPE`。DevTools 的堆快照里，一个字符串的 shallow size 大约是长度的 2 倍，那就是 2 字节的。
+
+比较容易出问题的地方:
+
+- 缓存在内存里的大 JSON 响应体。有中文描述或者 em dash 的基本都会按 2 字节存。
+- 会把源码留在堆里的运行环境，比如 Workers 这类 V8 isolate。打包器会转义字符串字面量，但不会转义正则和注释。
+- i18n 资源、模板、Markdown 这类本身就带非 ASCII 的大文本。
+
+两个容易踩的坑: `replace()`、`slice()` 这类从旧字符串派生新字符串的操作会沿用旧字符串的宽度，转义完要再生成一个新字符串才生效。`TextDecoder` 解出来的外部字符串不在 V8 的堆统计里，看堆的时候要把 `external` 一起算上。
+
+## 最后 \{#conclusion\}
+
+catalog 已经改成存 `Uint8Array`，Workers 上的正则也改成了 `\uXXXX`。只留名字、描述和 action 列表时，JSC 堆从 26.4 MiB 降到 17.2 MiB；Workers 稳态堆从 88.7 MiB 降到 74.8 MiB。
+
+[open-connector]: https://github.com/oomol-lab/open-connector
+[open-connector#490]: https://github.com/oomol-lab/open-connector/pull/490
+[open-connector#493]: https://github.com/oomol-lab/open-connector/pull/493
+[string.h]: https://github.com/v8/v8/blob/main/src/objects/string.h
+[unicode.h]: https://github.com/v8/v8/blob/main/src/strings/unicode.h
+[runtime-regexp.cc]: https://github.com/v8/v8/blob/main/src/runtime/runtime-regexp.cc
+[StringPrototypeInlines.h]: https://github.com/WebKit/WebKit/blob/main/Source/JavaScriptCore/runtime/StringPrototypeInlines.h
+[js_printer.go]: https://github.com/evanw/esbuild/blob/main/internal/js_printer/js_printer.go
+[StringImpl.h]: https://github.com/WebKit/WebKit/blob/main/Source/WTF/wtf/text/StringImpl.h
+[modules-new.c++]: https://github.com/cloudflare/workerd/blob/main/src/workerd/jsg/modules-new.c++
+[charset]: https://esbuild.github.io/api/#charset

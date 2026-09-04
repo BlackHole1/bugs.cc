@@ -273,7 +273,10 @@ describe('content invariants', () => {
 
     // Only .mdx posts need component imports; .md posts skip this check.
     it.runIf(post.file.endsWith('.mdx'))('mdx: imports every component it uses', () => {
-      const used = new Set([...post.body.matchAll(/<([A-Z][A-Za-z0-9]*)\b/g)].map((m) => m[1]));
+      // Only prose counts: `std::span<Latin1Character>` in a code block or
+      // `<Placeholder>` in inline code is not a component.
+      const prose = proseLines(post.body).map(stripInlineCode).join('\n');
+      const used = new Set([...prose.matchAll(/<([A-Z][A-Za-z0-9]*)\b/g)].map((m) => m[1]));
       for (const name of used) {
         expect(post.body, `${post.rel}: missing import for <${name}>`).toMatch(
           new RegExp(`^import ${name} from ["'][^"']+["'];?$`, 'm'),

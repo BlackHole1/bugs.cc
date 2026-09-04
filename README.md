@@ -57,5 +57,6 @@ aliases: [/zh/p/old-url/] # old URL, full path (language prefix and trailing sla
 - Put images in `public/images/<slug>/` and reference them as `/images/<slug>/x.png`. Do not hotlink off-site images. Run `bun run img` before committing.
 - Images get `width`/`height` and lazy loading automatically. The first image of a post is loaded eagerly (`fetchpriority="high"`) when it sits near the top, since it is then the page's LCP element; an explicit `loading=` attribute on an `<img>` is kept as written.
 - Code blocks support Expressive Code `title=` / `{1,3-5}` / `ins=` / `del=` / `collapse=`, and comment markers `// [!code highlight]`, `// [!code ++]`, `// [!code --]`, `// [!code word:foo]`.
+- Adjacent code blocks tagged `group` (for example ```` ```cpp title="a.h" group ````) render as one block with tabs; the `title` is the tab label.
 
 Full conventions, routes, and implementation decisions are in [AGENTS.md](AGENTS.md).
