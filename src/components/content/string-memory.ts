@@ -99,13 +99,26 @@ export function escapeWide(text: string): string {
 }
 
 /**
+ * First `limit` UTF-16 code units, never ending on a lone high surrogate so a
+ * preview cut cannot split an emoji or other supplementary-plane character.
+ */
+function sliceUnits(text: string, limit: number): string {
+  if (text.length <= limit) return text;
+  let end = limit;
+  const last = text.charCodeAt(end - 1);
+  const next = text.charCodeAt(end);
+  if (last >= 0xd800 && last <= 0xdbff && next >= 0xdc00 && next <= 0xdfff) end -= 1;
+  return text.slice(0, end);
+}
+
+/**
  * Split the first `limit` code units of `text` into runs of narrow characters
  * and single wide code points; with `escape`, a wide code point's segment
  * holds its escape instead of the character.
  */
 export function segments(text: string, escape: boolean, limit: number): Preview {
   const truncated = text.length > limit;
-  const shown = truncated ? text.slice(0, limit) : text;
+  const shown = truncated ? sliceUnits(text, limit) : text;
   const out: PreviewSegment[] = [];
   let run = '';
   for (const char of shown) {

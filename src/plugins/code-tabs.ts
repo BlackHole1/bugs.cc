@@ -36,10 +36,12 @@ import { defineHastPlugin, type HastPluginDefinition } from 'satteri';
  * ```
  *
  * The tab label is the fence `title`, or the language when there is none. The
- * switching is CSS only (`:has(input:checked)` in code.css): radio buttons in
- * labels are keyboard reachable (arrow keys move between tabs) and need no
- * script; a browser without `:has` shows every panel. A lone `group` fence is
- * left alone, so a block can carry the tag before its sibling is written.
+ * switching is CSS only: code.css hides every panel once a radio is checked,
+ * and each group carries a `<style>` with one `:has` rule per tab so any
+ * length of run can be selected. Radio buttons in labels are keyboard
+ * reachable (arrow keys move between tabs) and need no script; a browser
+ * without `:has` shows every panel. A lone `group` fence is left alone, so a
+ * block can carry the tag before its sibling is written.
  */
 
 /** Bare `group` word in a fence meta (`title="x" group`, `group {1-3}`). */
@@ -81,6 +83,14 @@ function clone<T>(node: T): T {
   return JSON.parse(JSON.stringify(node)) as T;
 }
 
+/** One `:has` rule per tab, scoped to this group, so a ninth panel still shows. */
+function panelShowRules(group: number, count: number): string {
+  return Array.from({ length: count }, (_, i) => {
+    const n = i + 1;
+    return `.code-tabs[data-group='${group}']:has(input[value='${n}']:checked)>[data-tab='${n}']{display:block}`;
+  }).join('');
+}
+
 function buildTabs(fences: GroupedFence[], group: number): Element {
   const name = `code-tabs-${group}`;
   const labels: ElementContent[] = fences.map(({ label }, i) => ({
@@ -106,8 +116,14 @@ function buildTabs(fences: GroupedFence[], group: number): Element {
   return {
     type: 'element',
     tagName: 'div',
-    properties: { className: ['code-tabs'] },
+    properties: { className: ['code-tabs'], dataGroup: String(group) },
     children: [
+      {
+        type: 'element',
+        tagName: 'style',
+        properties: {},
+        children: [{ type: 'text', value: panelShowRules(group, fences.length) }],
+      },
       {
         type: 'element',
         tagName: 'div',

@@ -51,6 +51,14 @@ describe('string-memory', () => {
       segments: [{ text: 'abc', wide: false }],
       truncated: true,
     });
+    expect(segments('a\u{1F600}b', false, 2)).toEqual({
+      segments: [{ text: 'a', wide: false }],
+      truncated: true,
+    });
+    expect(segments('a\u{1F600}b', false, 3).segments).toEqual([
+      { text: 'a', wide: false },
+      { text: '\u{1F600}', wide: true },
+    ]);
   });
 
   it('formats sizes and counts like the post', () => {

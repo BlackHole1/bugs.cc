@@ -12,7 +12,8 @@ describe('code-tabs', () => {
     const { html } = await compile(md, [codeTabs()]);
     expect(html).toBe(
       '<p>before</p>\n' +
-        '<div class="code-tabs">' +
+        '<div class="code-tabs" data-group="1">' +
+        "<style>.code-tabs[data-group='1']:has(input[value='1']:checked)>[data-tab='1']{display:block}.code-tabs[data-group='1']:has(input[value='2']:checked)>[data-tab='2']{display:block}</style>" +
         '<div class="code-tabs-bar">' +
         '<label><input type="radio" name="code-tabs-1" value="1" checked>a.h</label>' +
         '<label><input type="radio" name="code-tabs-1" value="2">b.h</label>' +
@@ -62,6 +63,14 @@ describe('code-tabs', () => {
     const { html } = await compile(md, [codeTabs()]);
     expect(html).not.toContain('code-tabs');
     expect(html.match(/<pre>/g)).toHaveLength(2);
+  });
+
+  it('emits a show rule for a ninth tab', async () => {
+    const md = Array.from({ length: 9 }, (_, i) => fence(String(i + 1), 'x')).join('\n\n');
+    const { html } = await compile(md, [codeTabs()]);
+    expect(html.match(/name="code-tabs-1"/g)).toHaveLength(9);
+    expect(html).toContain('data-tab="9"');
+    expect(html).toContain("[data-tab='9']{display:block}");
   });
 
   it('does not match group inside another word or value', async () => {

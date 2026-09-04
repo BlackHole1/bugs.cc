@@ -95,17 +95,6 @@ pre:not(.expressive-code pre) {
   display: none;
 }
 
-.code-tabs:has(input[value='1']:checked) > [data-tab='1'],
-.code-tabs:has(input[value='2']:checked) > [data-tab='2'],
-.code-tabs:has(input[value='3']:checked) > [data-tab='3'],
-.code-tabs:has(input[value='4']:checked) > [data-tab='4'],
-.code-tabs:has(input[value='5']:checked) > [data-tab='5'],
-.code-tabs:has(input[value='6']:checked) > [data-tab='6'],
-.code-tabs:has(input[value='7']:checked) > [data-tab='7'],
-.code-tabs:has(input[value='8']:checked) > [data-tab='8'] {
-  display: block;
-}
-
 .code-tabs .expressive-code {
   margin: 0;
 }
