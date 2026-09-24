@@ -1,5 +1,7 @@
 import AppWindow from '@lucide/astro/icons/app-window';
+import ArrowRightLeft from '@lucide/astro/icons/arrow-right-left';
 import Box from '@lucide/astro/icons/box';
+import Command from '@lucide/astro/icons/command';
 import Container from '@lucide/astro/icons/container';
 import Database from '@lucide/astro/icons/database';
 import File from '@lucide/astro/icons/file';
@@ -61,6 +63,15 @@ export const PROJECT_GROUPS: readonly ProjectGroup[] = [
         },
       },
       {
+        name: 'aswap',
+        icon: ArrowRightLeft,
+        repo: 'https://github.com/BlackHole1/aswap',
+        description: {
+          en: 'Multi-account switcher for Claude Code and Claude Desktop, claude-swap plus maintained fixes',
+          zh: 'Claude Code 与 Claude Desktop 多账号切换工具，基于 claude-swap 并持续维护修复补丁',
+        },
+      },
+      {
         name: 'bh-skills',
         icon: Sparkles,
         repo: 'https://github.com/BlackHole1/bh-skills',
@@ -99,6 +110,15 @@ export const PROJECT_GROUPS: readonly ProjectGroup[] = [
         description: {
           en: 'Trigger macOS trackpad swipe gestures from the CLI (Mission Control, Spaces, App Exposé)',
           zh: '用命令行触发 macOS 触控板滑动手势（调度中心、Spaces、App Exposé）',
+        },
+      },
+      {
+        name: 'passport-keys',
+        icon: Command,
+        repo: 'https://github.com/BlackHole1/passport-keys',
+        description: {
+          en: 'Turn the FoloToy AI Passport buttons into Mac keyboard shortcuts over USB or BLE',
+          zh: '把 FoloToy AI Passport 的按键变成 Mac 快捷键，支持 USB 与蓝牙连接',
         },
       },
     ],
