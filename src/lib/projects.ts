@@ -3,6 +3,7 @@ import ArrowRightLeft from '@lucide/astro/icons/arrow-right-left';
 import Box from '@lucide/astro/icons/box';
 import Command from '@lucide/astro/icons/command';
 import Container from '@lucide/astro/icons/container';
+import Cpu from '@lucide/astro/icons/cpu';
 import Database from '@lucide/astro/icons/database';
 import File from '@lucide/astro/icons/file';
 import Hand from '@lucide/astro/icons/hand';
@@ -185,6 +186,15 @@ export const PROJECT_GROUPS: readonly ProjectGroup[] = [
   {
     title: { en: 'Developer Tools', zh: '开发者工具' },
     projects: [
+      {
+        name: 'passportsim',
+        icon: Cpu,
+        repo: 'https://github.com/BlackHole1/passportsim',
+        description: {
+          en: 'ESP32-C3 emulator for FoloToy AI Passport firmware, in the browser or on desktop, with a CLI and MCP server',
+          zh: 'FoloToy AI Passport 固件的 ESP32-C3 模拟器，可在浏览器或桌面运行，自带 CLI 与 MCP Server',
+        },
+      },
       {
         name: 'sesmate',
         icon: Mail,
