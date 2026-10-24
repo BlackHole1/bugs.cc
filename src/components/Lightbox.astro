@@ -64,7 +64,7 @@ const { selector = '.post-body img', label, openHint, closeLabel } = Astro.props
     max-height: calc(100vh - 2rem);
     max-height: calc(100dvh - 2rem);
     margin: 0;
-    border-radius: 4px;
+    border-radius: var(--radius);
     background: var(--bg);
   }
 
@@ -105,18 +105,30 @@ const { selector = '.post-body img', label, openHint, closeLabel } = Astro.props
   }
 
   @media (prefers-reduced-motion: no-preference) {
-    .lightbox[open] {
-      animation: lightbox-in 0.15s ease-out;
+    /* The image grows from 0.94 (never from a point) over the long
+       ease-out tail and fades in a beat after it starts. The image, not the
+       dialog, is scaled: a transformed dialog would become the containing
+       block of the fixed close button, which would ride along and then
+       jump to the corner. */
+    .lightbox[open] .lightbox-img {
+      animation:
+        lightbox-grow var(--dur) var(--ease-out),
+        lightbox-fade var(--dur-fast) var(--ease-out) 0.05s both;
     }
 
-    @keyframes lightbox-in {
+    .lightbox[open]::backdrop {
+      animation: lightbox-fade var(--dur-fast) var(--ease-out);
+    }
+
+    @keyframes lightbox-grow {
+      from {
+        transform: scale(0.94);
+      }
+    }
+
+    @keyframes lightbox-fade {
       from {
         opacity: 0;
-        transform: scale(0.96);
-      }
-      to {
-        opacity: 1;
-        transform: none;
       }
     }
   }

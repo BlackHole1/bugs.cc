@@ -28,8 +28,8 @@ pre:not(.expressive-code pre) {
   font-size: 0.84375rem;
   line-height: 1.6;
   padding: 1em 1.25rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
   overflow-x: auto;
   max-width: 100%;
 }
@@ -57,8 +57,8 @@ pre:not(.expressive-code pre) {
   font-family: var(--font-sans);
   font-size: 0.8125rem;
   background: light-dark(#ececec, #0d0d0d);
-  border: 1px solid var(--border);
-  border-radius: 6px 6px 0 0;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius) var(--radius) 0 0;
 }
 
 .code-tabs-bar label {

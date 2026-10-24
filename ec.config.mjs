@@ -20,10 +20,12 @@ import { notationMarkers } from './src/expressive-code/notation-markers.ts';
  * `prefers-color-scheme` when there is no attribute (EC emits
  * `:root:not([data-theme='light'])` inside the media query, so the no-JS page
  * and the JS page agree). The tokens are drawn on the neutral `--code-bg`
- * (#f5f5f5 / #161616), not on the themes' own backgrounds.
+ * (#fbfbfb / #1a1a1a, the `--surface`), not on the themes' own
+ * backgrounds.
  *
  * Colour adjustments to Dracula for WCAG AA (4.5:1). The ratios below are on
- * #161616 and on the mark/ins/del line backgrounds further down:
+ * #161616 (the surface is now #1a1a1a, which lowers them by under 0.2) and on the
+ * mark/ins/del line backgrounds further down:
  * - comments #6272A4 are 3.9:1 plain and 3.2:1 on marked lines; #91a0d3 is
  *   7.0:1 plain and 5.8:1 on marked lines;
  * - red #FF5555 is 5.8:1 plain but 4.8:1 on marked lines; #ff7575 is 6.9:1
@@ -102,7 +104,7 @@ export default defineEcConfig({
     uiFontFamily: 'var(--font-sans)',
     uiFontSize: '0.8125rem',
     borderRadius: '6px',
-    borderColor: 'var(--border)',
+    borderColor: 'var(--edge)',
     codeBackground: 'var(--code-bg)',
     frames: {
       shadowColor: 'transparent',

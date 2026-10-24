@@ -1,4 +1,7 @@
 ---
+import FolderGit2 from '@lucide/astro/icons/folder-git-2';
+import House from '@lucide/astro/icons/house';
+import NotebookPen from '@lucide/astro/icons/notebook-pen';
 import Rss from '@lucide/astro/icons/rss';
 import Search from '@lucide/astro/icons/search';
 import LanguageSwitch from '@/components/LanguageSwitch.astro';
@@ -6,6 +9,12 @@ import ThemeToggle from '@/components/ThemeToggle.astro';
 import { useTranslations, type Lang } from '@/i18n';
 import { feedUrl, homeUrl, postsIndexUrl, projectsIndexUrl, searchUrl } from '@/lib/url';
 
+/**
+ * The site navigation, drawn as the dock at the bottom of the viewport
+ * (global.css `.site-nav`): one round button per page, a divider, then the
+ * feed, the language switch and the theme toggle. Each link's text is its
+ * tooltip and its accessible name.
+ */
 export interface Props {
   lang: Lang;
   /** Path of the current page, used for `aria-current`. */
@@ -20,51 +29,25 @@ const { lang, currentPath, switchHref, switchFallback = false } = Astro.props;
 const t = useTranslations(lang);
 
 const current = (href: string) => (currentPath === href ? 'page' : undefined);
+const pages = [
+  { href: homeUrl(lang), label: t.nav.home, Icon: House },
+  { href: postsIndexUrl(lang), label: t.nav.posts, Icon: NotebookPen },
+  { href: projectsIndexUrl(lang), label: t.nav.projects, Icon: FolderGit2 },
+  { href: searchUrl(lang), label: t.nav.search, Icon: Search },
+];
 ---
 
-<nav class="site-nav" aria-label={t.nav.label}>
+<nav class="site-nav" aria-label={t.nav.label} data-dock>
   <ul>
-    <li>
-      <a
-        class="nav-link"
-        href={homeUrl(lang)}
-        aria-current={current(homeUrl(lang))}
-        data-astro-prefetch="viewport"
-      >
-        <span class="link-text">{t.nav.home}</span>
-      </a>
-    </li>
-    <li>
-      <a
-        class="nav-link"
-        href={postsIndexUrl(lang)}
-        aria-current={current(postsIndexUrl(lang))}
-        data-astro-prefetch="viewport"
-      >
-        <span class="link-text">{t.nav.posts}</span>
-      </a>
-    </li>
-    <li>
-      <a
-        class="nav-link"
-        href={projectsIndexUrl(lang)}
-        aria-current={current(projectsIndexUrl(lang))}
-        data-astro-prefetch="viewport"
-      >
-        <span class="link-text">{t.nav.projects}</span>
-      </a>
-    </li>
-    <li>
-      <a
-        class="nav-link"
-        href={searchUrl(lang)}
-        aria-current={current(searchUrl(lang))}
-        data-astro-prefetch="viewport"
-      >
-        <Search class="nav-icon" size={16} aria-hidden="true" focusable="false" />
-        <span class="link-text">{t.nav.search}</span>
-      </a>
-    </li>
+    {pages.map(({ href, label, Icon }) => (
+      <li>
+        <a class="nav-link" href={href} aria-current={current(href)} data-astro-prefetch="viewport">
+          <Icon class="nav-icon" size={16} aria-hidden="true" focusable="false" />
+          <span class="link-text">{label}</span>
+        </a>
+      </li>
+    ))}
+    <li class="dock-divider" aria-hidden="true"></li>
     <li>
       <a
         class="nav-link"
@@ -84,3 +67,95 @@ const current = (href: string) => (currentPath === href ? 'page' : undefined);
     </li>
   </ul>
 </nav>
+
+<script>
+  /**
+   * Magnification on a fine pointer, like the macOS dock: each icon grows
+   * with the pointer's horizontal distance from its button's centre (a
+   * raised cosine, 1x at `RANGE` px and beyond, `MAX`x on top of it). Only
+   * the glyph scales (`--s`, global.css), inside its fixed button, so the
+   * buttons, their fills and the bar keep their size and nothing is laid
+   * out again. Centres come from `offsetLeft`, which transforms do not
+   * touch. The CSS transition smooths the steps and brings the icons back
+   * when the pointer leaves. Touch, pens and reduced motion keep the dock
+   * still.
+   *
+   * Escape hides the tooltips until the pointer leaves the dock or focus
+   * moves (WCAG 1.4.13, `data-tips-hidden`).
+   */
+  const MAX = 1.35;
+  const RANGE = 90;
+
+  const dock = document.querySelector<HTMLElement>('[data-dock]');
+  const fine = matchMedia('(hover: hover) and (pointer: fine)');
+  const still = matchMedia('(prefers-reduced-motion: reduce)');
+  if (dock) {
+    const root = document.documentElement;
+    const buttons = [...dock.querySelectorAll<HTMLElement>('.nav-link')];
+    let frame = 0;
+    let x: number | null = null;
+
+    const render = () => {
+      frame = 0;
+      // Read everything first, then write.
+      const origin = dock.getBoundingClientRect().left;
+      const scales = buttons.map((el) => {
+        if (x === null) return 1;
+        const d = Math.abs(x - (origin + el.offsetLeft + el.offsetWidth / 2));
+        return d >= RANGE ? 1 : 1 + ((MAX - 1) * (1 + Math.cos((Math.PI * d) / RANGE))) / 2;
+      });
+      buttons.forEach((el, i) => {
+        const k = scales[i] ?? 1;
+        if (k === 1) el.style.removeProperty('--s');
+        else el.style.setProperty('--s', k.toFixed(3));
+      });
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(render);
+    };
+    const follow = (event: PointerEvent) => {
+      if (event.pointerType !== 'mouse' || !fine.matches || still.matches) return;
+      x = event.clientX;
+      schedule();
+    };
+    const rest = () => {
+      x = null;
+      schedule();
+    };
+
+    // The theme switch's view transition covers the page for its duration
+    // and takes the pointer, which sends a `pointerleave` although the
+    // pointer has not moved; that one is held until the transition is over
+    // and dropped if the pointer is back over the dock by then.
+    let heldLeave = false;
+    dock.addEventListener('pointerenter', (event) => {
+      heldLeave = false;
+      follow(event);
+    });
+    dock.addEventListener('pointermove', follow);
+    dock.addEventListener('pointerleave', () => {
+      delete dock.dataset.tipsHidden;
+      if ('themeSwitch' in root.dataset) {
+        heldLeave = true;
+        return;
+      }
+      rest();
+    });
+    new MutationObserver(() => {
+      if (heldLeave && !('themeSwitch' in root.dataset)) {
+        setTimeout(() => {
+          if (heldLeave && !dock.matches(':hover')) rest();
+          heldLeave = false;
+        }, 100);
+      }
+    }).observe(root, { attributes: true, attributeFilter: ['data-theme-switch'] });
+    still.addEventListener('change', rest);
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') dock.dataset.tipsHidden = '';
+    });
+    dock.addEventListener('focusin', () => {
+      delete dock.dataset.tipsHidden;
+    });
+  }
+</script>

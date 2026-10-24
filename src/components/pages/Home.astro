@@ -1,11 +1,10 @@
 ---
 import { render } from 'astro:content';
 import JsonLd from '@/components/JsonLd.astro';
-import PostList from '@/components/PostList.astro';
 import Base from '@/layouts/Base.astro';
 import { useTranslations, type Lang } from '@/i18n';
-import { SITE_TIME_ZONE, toIsoWithOffset } from '@/lib/dates';
-import { getPage, getPosts } from '@/lib/posts';
+import { SITE_TIME_ZONE, formatDate, toIsoWithOffset } from '@/lib/dates';
+import { descriptionOf, getPage, getPosts, pathOf } from '@/lib/posts';
 import { SITE } from '@/lib/site';
 import { absoluteUrl, homeUrl, postsIndexUrl } from '@/lib/url';
 
@@ -68,6 +67,16 @@ if (html !== undefined) {
 } else if (page) {
   Content = (await render(page)).Content;
 }
+
+// The bio's opening paragraph is the hero statement at the top; the rest
+// (contact, location, ...) is the profile card at the bottom. Only split
+// when the bio starts with a paragraph (a `</p>` inside a list would cut it
+// into unbalanced halves), and render no card when nothing is left.
+const trimmed = body?.trimStart();
+const split = trimmed?.startsWith('<p') ? trimmed.indexOf('</p>') : -1;
+const lead = trimmed !== undefined && split !== -1 ? trimmed.slice(0, split + 4) : undefined;
+const restHtml = trimmed !== undefined && split !== -1 ? trimmed.slice(split + 4) : body;
+const rest = restHtml?.trim() ? restHtml : undefined;
 ---
 
 <Base
@@ -79,24 +88,43 @@ if (html !== undefined) {
 >
   <JsonLd slot="head" data={profile} />
   <h1 class="visually-hidden">{t.siteTitle}</h1>
-  <section class="bio" aria-labelledby="bio-heading">
-    <h2 id="bio-heading" class="visually-hidden">
-      {t.home.aboutHeading}
-    </h2>
-    {body !== undefined && <Fragment set:html={body} />}
-    {Content && <Content />}
-  </section>
-  <section aria-labelledby="recent-heading">
-    <h2 id="recent-heading">{t.home.recentPosts}</h2>
+  {lead !== undefined && <div class="lead" set:html={lead} />}
+  <section class="recent" aria-labelledby="recent-heading">
+    <div class="section-head">
+      <h2 id="recent-heading">{t.home.recentPosts}</h2>
+      <a class="section-more" href={postsIndexUrl(lang)} data-astro-prefetch="viewport">
+        <span class="link-text">{t.home.allPosts}</span>
+      </a>
+    </div>
     {recent.length === 0 ? (
       <p>{t.home.noPosts}</p>
     ) : (
-      <PostList posts={recent} {lang} labelledBy="recent-heading" prefetch="viewport" />
+      <ul class="entries" lang={t.htmlLang} role="list">
+        {recent.map((post) => (
+          <li class="entry">
+            <time datetime={toIsoWithOffset(post.data.date)}>{formatDate(post.data.date)}</time>
+            <div class="entry-body">
+              <h3 class="entry-title">
+                <a href={pathOf(post)} data-astro-prefetch="viewport">
+                  {post.data.title}
+                </a>
+              </h3>
+              <p class="entry-excerpt">{descriptionOf(post)}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
     )}
-    <p>
-      <a href={postsIndexUrl(lang)}>{t.home.allPosts}</a>
-    </p>
   </section>
+  {(rest !== undefined || Content) && (
+    <section class="bio" aria-labelledby="bio-heading">
+      <h2 id="bio-heading" class="visually-hidden">
+        {t.home.aboutHeading}
+      </h2>
+      {rest !== undefined && <Fragment set:html={rest} />}
+      {Content && <Content />}
+    </section>
+  )}
   <!-- Live clock for the `%%CLOCK%%` token; a no-op when the page has no clock. -->
   <script is:inline>
     (() => {
@@ -140,3 +168,194 @@ if (html !== undefined) {
     })();
   </script>
 </Base>
+
+<style>
+  /* Hero: the bio's first line, set large on the column's edge. */
+  .lead :global(p) {
+    margin: 0 0 3.5rem;
+    color: var(--heading);
+    font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2rem);
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .section-head h2 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+
+  .section-more {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+    font-size: 0.875rem;
+    --underline-rest: transparent;
+  }
+
+  /*
+   * Recent posts: the date in a narrow column, a hairline, then the title
+   * and the excerpt (the perpendicular of wxad.design's entries). The whole
+   * entry is the link's target (`::after`); hovering anywhere on it sweeps
+   * the title's underline in. Stacked on phones, the hairline dropped.
+   */
+  .entries {
+    list-style: none;
+    /* Never wider than the gutter (text-only zoom grows the rem). */
+    margin: 0 calc(-1 * min(1rem, var(--gutter)));
+    padding: 0;
+  }
+
+  .entry {
+    position: relative;
+    display: grid;
+    grid-template-columns: 6.5rem 1fr;
+    gap: 0 1.5rem;
+    margin: 0;
+    padding: 1.1rem 1rem;
+  }
+
+  .entry-body {
+    padding-left: 1.5rem;
+    border-left: 1px solid var(--hairline);
+    min-width: 0;
+  }
+
+  .entry time {
+    padding-top: 0.2em;
+    font-size: 0.9375rem;
+    white-space: nowrap;
+  }
+
+  .entry-title {
+    margin: 0 0 0.35rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+    /* Not the headings' `balance`: it broke short CJK titles mid-word. */
+    text-wrap: pretty;
+  }
+
+  .entry-title a {
+    color: var(--heading);
+    --underline-rest: transparent;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .entry-title a::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-sm);
+  }
+
+  .entry-title a:focus-visible {
+    outline: none;
+  }
+
+  .entry-title a:focus-visible::after {
+    outline: 2px solid var(--focus);
+  }
+
+  .entry-excerpt {
+    display: -webkit-box;
+    margin: 0;
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  @media (max-width: 639px) {
+    .entry {
+      grid-template-columns: 1fr;
+    }
+
+    .entry time {
+      padding: 0 0 0.25rem;
+    }
+
+    .entry-body {
+      padding-left: 0;
+      border-left: 0;
+    }
+  }
+
+  /*
+   * Profile card: the rest of the bio (`### Contact` + list, ...) laid out
+   * as label and value columns on a framed surface, a hairline between
+   * groups. Plain CSS over the Markdown: headings take the first column,
+   * lists the second.
+   */
+  .bio {
+    display: grid;
+    grid-template-columns: fit-content(7rem) minmax(0, 1fr);
+    gap: 0 1.5rem;
+    margin-top: 3.5rem;
+    padding: 0.5rem 1.5rem;
+    border: 1px solid var(--edge);
+    border-radius: var(--radius);
+    background: var(--surface);
+    font-size: 0.9375rem;
+  }
+
+  .bio :global(:is(h2, h3)) {
+    grid-column: 1;
+    margin: 0;
+    padding: 1rem 0;
+    color: var(--muted);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.6;
+  }
+
+  .bio :global(ul) {
+    grid-column: 2;
+    margin: 0;
+    padding: 1rem 0;
+    /* An empty marker rather than `none`: Safari drops the list role of
+       lists with `list-style: none`. */
+    list-style-type: '';
+  }
+
+  .bio :global(:is(h2, h3):not(.visually-hidden, #bio-heading + *)),
+  .bio :global(:is(h2, h3):not(.visually-hidden, #bio-heading + *) + ul) {
+    border-top: 1px solid var(--hairline);
+  }
+
+  .bio :global(li + li) {
+    margin-top: 0.2em;
+  }
+
+  @media (max-width: 479px) {
+    .bio {
+      grid-template-columns: 1fr;
+    }
+
+    .bio :global(:is(h2, h3)) {
+      padding-bottom: 0;
+    }
+
+    .bio :global(ul) {
+      grid-column: 1;
+      padding-top: 0.25rem;
+    }
+
+    .bio :global(:is(h2, h3):not(.visually-hidden, #bio-heading + *) + ul) {
+      border-top: 0;
+    }
+  }
+</style>

@@ -1,32 +1,49 @@
 /* Design tokens. Two neutral ladders (no blue or purple tint) with one green
    accent, picked by `color-scheme` through `light-dark()`: the light ladder is
-   near-white, the dark one near-black. `<html data-theme>` (set before first
+   light grey, the dark one near-black. `<html data-theme>` (set before first
    paint by the inline script in Base.astro from localStorage; cycled by
    ThemeToggle.astro) pins the scheme when `light` or `dark`; `auto` (the
    default) and no JavaScript at all follow the OS through
    `color-scheme: light dark`. Every text token is at
-   or above WCAG 4.5:1 on the surfaces it sits on (computed 2026-08-27):
-   light: text 16.1:1, heading 18.4:1, link 5.2:1, visited 5.3:1, muted 6.2:1
-   (5.8:1 on --zebra); dark: text 12.8:1, heading 17:1, link 8.7:1, visited
-   9.0:1, muted 7.4:1 (6.9:1 on --zebra). Dark text stays off pure white and
+   or above WCAG 4.5:1 on the surfaces it sits on (computed 2026-10-24, on
+   the page / --surface / --zebra): light: text 14.9 / 15.9 / 13.8, heading
+   17 / 18.2 / 15.8, link 5.5 / 5.9 / 5.1, visited 5.3 / 5.7 / 5.0, muted
+   6.0 / 6.5 / 5.6; dark (page / --surface): text 12.9 / 11.7, heading
+   17.1 / 15.6, link 8.8 / 8.0, visited 9.0 / 8.2, muted 7.4 / 6.7. The
+   --edge around surfaces is 1.24:1 on the light page and 1.45:1 on the dark
+   one (--edge-strong, the hover frame, 1.8 / 2.2). The grain
+   (--noise) darkens or lightens single pixels of the page: measured on the
+   rendered page, muted text stays at or above 4.5:1 on 99.99% of light
+   pixels (5.1:1 at the 5th percentile) and on every dark one; keep it
+   there when tuning the tile. The dark grain stays fainter than the dark
+   surface step, or the cards drown in it. Dark text stays off pure white and
    the dark page off pure black (APCA: #ddd-#fafafa on #121212-#222 avoids the
    halo of #fff on #000). */
 :root {
   color-scheme: light dark;
 
-  --bg: light-dark(#fcfcfc, #101010);
+  /* The page is a grey sheet with a fine grain (--noise below). The things
+     on it (dock, cards, code) are one step lighter and framed by a 1px
+     --edge: one level of depth, drawn by the border in both schemes, no
+     shadows (a shadow vanishes on the dark page, and soft shadows under
+     every card read as a template). --hairline is for dividers. */
+  --bg: light-dark(#f3f3f3, #0f0f0f);
+  --surface: light-dark(#fbfbfb, #1a1a1a);
+  --edge: light-dark(#dcdcdc, #303030);
+  --edge-strong: light-dark(#b8b8b8, #4a4a4a);
+  --hairline: light-dark(rgba(0, 0, 0, 0.08), rgba(255, 255, 255, 0.09));
   --text: light-dark(#1f1f1f, #d4d4d4);
   --heading: light-dark(#111111, #f2f2f2);
-  --link: light-dark(#177a4f, #6fbf9a);
-  --link-visited: light-dark(#566f62, #a8b5ad);
-  --muted: light-dark(#5f5f5f, #a1a1a1);
-  --quote-border: light-dark(#cfcfcf, #4a4a4a);
-  --border: light-dark(#e3e3e3, #2a2a2a);
-  --zebra: light-dark(#f4f4f4, #171717);
-  /* Code blocks: one step off the page with a --border frame; the Expressive
-     Code tokens (GitHub Light / Dracula, see ec.config.mjs) are drawn on this
-     neutral surface instead of the themes' own backgrounds. */
-  --code-bg: light-dark(#f5f5f5, #161616);
+  --link: light-dark(#14704a, #6fbf9a);
+  --link-visited: light-dark(#53695d, #a8b5ad);
+  --muted: light-dark(#5c5c5c, #a1a1a1);
+  --quote-border: light-dark(#cbcbcb, #4a4a4a);
+  --border: light-dark(#dedede, #2a2a2a);
+  --zebra: light-dark(#ebebeb, #171717);
+  /* Code blocks sit on the raised surface with a hairline frame; the
+     Expressive Code tokens (GitHub Light / Dracula, see ec.config.mjs) are
+     drawn on it instead of the themes' own backgrounds. */
+  --code-bg: var(--surface);
   /* Inline code: neutral tint plus text one step stronger than the body. */
   --inline-code: light-dark(#1a1a1a, #ececec);
   --inline-code-bg: light-dark(rgba(0, 0, 0, 0.06), rgba(255, 255, 255, 0.08));
@@ -49,12 +66,38 @@
     'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
   /* --font-mono is provided by the Astro Fonts API (<Font /> in Base.astro). */
   --tap: 44px;
+  /* Motion ("Web 流畅界面建议", wxad.design): one ease-out curve for
+     everything the reader sets off, never ease-in (an interface answering an
+     action should be fastest at the start), with curve and duration judged
+     together: this curve spends most of its time settling, so 0.4-0.7s
+     still feels immediate. Every transition is interruptible by
+     construction (CSS transitions retarget from the current value). */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 0.2s;
+  --dur: 0.4s;
+  --dur-slow: 0.7s;
+  /* Pressed controls shrink a little, never to a point. */
+  --press: 0.96;
   /* Link underline (typography.css `a`): the sweep-in timing, and the
      colour of the resting 1px line (transparent for links that only show
      their underline on hover). */
-  --underline-duration: 0.25s;
-  --underline-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --underline-duration: var(--dur);
+  --underline-ease: var(--ease-out);
   --underline-rest: currentColor;
+  /* Small radii: a technical blog, not a toy. Cards, code, images and inputs
+     take --radius; rows, tooltips and inline marks --radius-sm; the dock
+     --radius-dock, which is --radius plus its padding so the buttons inside
+     sit concentrically. */
+  --radius: 6px;
+  --radius-sm: 4px;
+  --radius-dock: 10px;
+  /* Grain over the page (html background), one tile per scheme. */
+  --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .25 0 0 0 -.1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  /* Bottom dock (Nav.astro). */
+  --dock-item: 40px;
+  --dock-gap: 4px;
+  --dock-pad: 4px;
+  --dock-bottom: 12px;
   /* Table of contents fixed at the left edge of the viewport (>= 1220px):
      list width, distance from the viewport edge, minimum gap to the body
      column, and distance from the top (roughly the article title). */
@@ -79,9 +122,27 @@
   color-scheme: dark;
 }
 
+/* Light grain on the dark page (`light-dark()` takes colours only). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 .2 0 0 0 -.09'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
+
+:root[data-theme='dark'] {
+  --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 .2 0 0 0 -.09'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
 @media (min-width: 640px) {
   :root {
     --gutter: 24px;
+  }
+}
+
+@media (max-width: 400px) {
+  :root {
+    --dock-item: 38px;
+    --dock-gap: 4px;
   }
 }
 
@@ -96,7 +157,9 @@
 }
 
 html {
-  background: var(--bg);
+  background: var(--noise) var(--bg);
+  /* Focus and in-page jumps stop above the dock (WCAG 2.4.11, technique C43). */
+  scroll-padding-bottom: calc(var(--dock-item) + 2 * var(--dock-pad) + var(--dock-bottom) + 1rem);
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   scroll-behavior: smooth;
@@ -111,6 +174,7 @@ html {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
@@ -133,6 +197,9 @@ body {
   line-height: 1.6;
   color: var(--text);
   overflow-wrap: break-word;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 @media (min-width: 640px) {
@@ -211,15 +278,12 @@ html:lang(zh) :is(em, i, cite, dfn, blockquote, address) {
   border: 0;
 }
 
-/* Header: site title left, nav right; the nav wraps under the title when narrow. */
+/* Header: the avatar and the site name at the start of the column, on the
+   same edge as the text; the navigation lives in the dock at the bottom
+   (below). */
 .site-header {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0 1.5rem;
-  margin: 0 0 1.5rem;
-  font-size: 0.9375rem;
+  margin: 0.5rem 0 2.5rem;
 }
 
 .site-title {
@@ -227,12 +291,13 @@ html:lang(zh) :is(em, i, cite, dfn, blockquote, address) {
   align-items: center;
   gap: 0.6rem;
   min-height: var(--tap);
-  font-size: 1.25rem;
-  font-weight: bold;
+  font-size: 1rem;
+  font-weight: 600;
   line-height: 1.2;
   color: var(--heading);
   /* Underline on hover only (the bar sweeps in under the `.link-text` span). */
   --underline-rest: transparent;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* The avatar as site logo (Header.astro), decorative next to the site name. */
@@ -243,14 +308,80 @@ html:lang(zh) :is(em, i, cite, dfn, blockquote, address) {
   margin: 0;
   border-radius: 50%;
   object-fit: cover;
+  box-shadow: 0 0 0 1px var(--hairline);
+  transition: transform var(--dur) var(--ease-out);
+}
+
+.site-title:active .site-logo {
+  transform: scale(var(--press));
+}
+
+/* Dock: the site navigation as a floating toolbar at the bottom of the
+   viewport, in reach of the thumb on a phone (wxad.design). Flat icon
+   buttons on a solid surface with an --edge, no blur, no gradient; the
+   label of each is a tooltip above it (the visible text of the link, so it
+   is also the accessible name), shown on hover and on keyboard focus. The
+   current page's button is lightly filled. On a fine pointer the icons
+   grow towards the cursor (Nav.astro sets `--s` on each button); only the
+   glyph scales, inside its fixed button, so the buttons and their fills
+   stay in the bar and nothing is laid out again. It comes up from below
+   once per session (`data-revisit`, Base.astro), not on every page. */
+.site-nav {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--dock-bottom) + env(safe-area-inset-bottom, 0px));
+  z-index: 20;
+  translate: -50% 0;
+  padding: var(--dock-pad);
+  font-size: 0.8125rem;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  view-transition-name: site-nav;
+}
+
+/* The bar, a layer behind the buttons (the dock is its stacking context). */
+.site-nav::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-dock);
+  background: var(--surface);
+}
+
+/* The theme switch wipes the whole page (`data-theme-switch`, below): the
+   dock rides in the page snapshot instead of cross-fading on its own. */
+:root[data-theme-switch] .site-nav {
+  view-transition-name: none;
+}
+
+/* Rises into place, fading in a beat after it starts moving (an element
+   that arrives is placed before it is seen). */
+:root:not([data-revisit]) .site-nav {
+  animation:
+    dock-rise var(--dur-slow) var(--ease-out) 0.15s both,
+    dock-fade var(--dur) var(--ease-out) 0.21s both;
+}
+
+@keyframes dock-rise {
+  from {
+    transform: translateY(72px);
+  }
+}
+
+@keyframes dock-fade {
+  from {
+    opacity: 0;
+  }
 }
 
 .site-nav ul {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0 0.25rem;
-  margin: 0 -0.5em;
+  align-items: flex-end;
+  gap: var(--dock-gap);
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -260,28 +391,56 @@ html:lang(zh) :is(em, i, cite, dfn, blockquote, address) {
   margin: 0;
 }
 
+/* Without JavaScript there is no theme toggle, and no empty cell for it. */
+:root:not([data-theme]) .site-nav li:has(> .theme-toggle) {
+  display: none;
+}
+
+/* A hairline between the pages and the switches. */
+.site-nav .dock-divider {
+  align-self: center;
+  width: 1px;
+  height: 28px;
+  margin: 0 4px;
+  background: var(--edge);
+}
+
 .nav-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3em;
-  min-height: var(--tap);
-  padding: 0 0.5em;
-  line-height: 1.2;
-  white-space: nowrap;
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--dock-item);
+  height: var(--dock-item);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: light-dark(#4a4a4a, #bdbdbd);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    scale var(--dur) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out);
 }
 
+/* `scale`, not `transform`, so the press composes with the magnification. */
+.nav-link:active {
+  scale: var(--press);
+}
+
+@media (hover: hover) {
+  .nav-link:hover {
+    background-color: light-dark(rgba(0, 0, 0, 0.035), rgba(255, 255, 255, 0.05));
+    color: var(--heading);
+  }
+}
+
+/* The current page: a lightly filled button. */
 .nav-link[aria-current='page'] {
+  background-color: light-dark(rgba(0, 0, 0, 0.055), rgba(255, 255, 255, 0.08));
   color: var(--heading);
-}
-
-/* The current page keeps the 2px hover bar. */
-.nav-link[aria-current='page'] .link-text {
-  background-position:
-    0 100%,
-    0 100%;
-  background-size:
-    100% 2px,
-    100% 1px;
 }
 
 .nav-icon {
@@ -290,11 +449,138 @@ html:lang(zh) :is(em, i, cite, dfn, blockquote, address) {
   height: 1em;
 }
 
+.site-nav .nav-icon {
+  width: 45%;
+  height: 45%;
+  pointer-events: none;
+}
+
+/* Magnification: the glyph (the theme toggle's three share one wrapper). */
+.nav-link > .nav-icon,
+.theme-toggle-icons {
+  scale: var(--s, 1);
+  transition: scale var(--dur-fast) var(--ease-out);
+}
+
+/* Tooltip: the link text, or the theme button's name. Placed first, faded in
+   a beat later; leaves by fading first. For links the text is the
+   accessible name, so it is only made transparent, never `display: none`.
+   WCAG 1.4.13: the 10px gap above the button is the tooltip's own
+   transparent border, so the pointer can move from the button onto a
+   shown tooltip without losing it, and Escape hides it (Nav.astro,
+   `data-tips-hidden`) until the pointer leaves or focus moves. */
+.site-nav .link-text,
+.site-nav .lang-switch > span:not(.visually-hidden),
+.theme-toggle::after {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  padding: 0.3em 0.65em;
+  border-bottom: 10px solid transparent;
+  /* The bottom corners are 10px taller on the outside, so the background
+     (clipped to the padding box) keeps round corners above the border. */
+  border-radius: var(--radius-sm) var(--radius-sm) var(--radius-sm) var(--radius-sm) /
+    var(--radius-sm) var(--radius-sm) calc(var(--radius-sm) + 10px) calc(var(--radius-sm) + 10px);
+  background: light-dark(#1f1f1f, #ececec);
+  background-clip: padding-box;
+  color: light-dark(#f5f5f5, #141414);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  translate: -50% 0;
+  transform: translateY(4px);
+  transform-origin: 50% 100%;
+  transition:
+    opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur) var(--ease-out);
+  /* No underline bar on the tooltips. */
+  background-image: none;
+}
+
+.theme-toggle::after {
+  content: attr(aria-label);
+}
+
+/* Narrow screens: the last button's tooltip (the longest label) hangs to
+   the left of its right edge instead of past the viewport. */
+@media (max-width: 520px) {
+  .theme-toggle::after {
+    left: auto;
+    right: 0;
+    translate: none;
+    transform-origin: 100% 100%;
+  }
+}
+
+@media (hover: hover) {
+  .nav-link:hover .link-text,
+  .nav-link:hover > span:not(.visually-hidden, .theme-toggle-icons),
+  .theme-toggle:hover::after {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+    transition-delay: 0.21s, 0.15s;
+  }
+
+  /* The theme switch's view transition takes the pointer (and `:hover`)
+     for its duration; the pressed button keeps its label. */
+  :root[data-theme-switch] .theme-toggle::after {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+.nav-link:focus-visible .link-text,
+.nav-link:focus-visible > span:not(.visually-hidden, .theme-toggle-icons),
+.theme-toggle:focus-visible::after {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  transition-delay: 0.06s, 0s;
+}
+
+.site-nav[data-tips-hidden] .nav-link .link-text,
+.site-nav[data-tips-hidden] .nav-link > span:not(.visually-hidden, .theme-toggle-icons),
+.site-nav[data-tips-hidden] .theme-toggle::after {
+  opacity: 0;
+  pointer-events: none;
+  transition-delay: 0s;
+}
+
+.nav-link:focus-visible {
+  outline-offset: 0;
+  border-radius: var(--radius);
+}
+
 /* The page has no translation: the switch is an inert `aria-disabled` span
    (no href, not focusable; LanguageSwitch.astro says so in its name and title). */
 .lang-switch[aria-disabled='true'] {
   color: var(--muted);
+  opacity: 0.55;
   cursor: default;
+}
+
+.lang-switch[aria-disabled='true']:active {
+  scale: none;
+}
+
+/* Windows High Contrast and other forced colours replace backgrounds:
+   give the buttons an edge and mark the current page in the system
+   highlight colours instead of the fill. */
+@media (forced-colors: active) {
+  .nav-link {
+    border: 1px solid CanvasText;
+  }
+
+  .nav-link[aria-current='page'] {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
 }
 
 /* Theme toggle (ThemeToggle.astro): a nav-sized button showing the icon of
@@ -312,26 +598,15 @@ html:lang(zh) :is(em, i, cite, dfn, blockquote, address) {
    backwards. Nothing animates on first paint: `data-theme` is set before
    the first style computation. The global reduced-motion rule above
    flattens the transition to an instant swap. */
-.theme-toggle {
-  border: 0;
-  background: none;
-  color: var(--link);
-  font: inherit;
-  cursor: pointer;
-}
-
-.theme-toggle:hover {
-  color: var(--heading);
-}
-
 :root:not([data-theme]) .theme-toggle {
   display: none;
 }
 
 .theme-toggle-icons {
   display: grid;
-  width: 1.1em;
-  height: 1.1em;
+  width: 45%;
+  height: 45%;
+  pointer-events: none;
 }
 
 .theme-toggle-icons .nav-icon {
@@ -339,8 +614,8 @@ html:lang(zh) :is(em, i, cite, dfn, blockquote, address) {
   width: 100%;
   height: 100%;
   transition:
-    opacity 0.25s,
-    transform 0.35s cubic-bezier(0.2, 0, 0, 1);
+    opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur) var(--ease-out);
 }
 
 /* Optical centring: the ink of `sun-moon` (moon body lower left, rays upper
@@ -362,14 +637,14 @@ html:lang(zh) :is(em, i, cite, dfn, blockquote, address) {
 :root[data-theme='light'] .theme-toggle-moon,
 :root[data-theme='dark'] .theme-toggle-auto {
   opacity: 0;
-  transform: rotate(90deg) scale(0.4);
+  transform: rotate(90deg) scale(0.5);
 }
 
 :root[data-theme='auto'] .theme-toggle-moon,
 :root[data-theme='light'] .theme-toggle-auto,
 :root[data-theme='dark'] .theme-toggle-sun {
   opacity: 0;
-  transform: rotate(-90deg) scale(0.4);
+  transform: rotate(-90deg) scale(0.5);
 }
 
 /* The page follows the toggle with a wipe: ThemeToggle.astro wraps the
@@ -406,7 +681,7 @@ html:lang(zh) :is(em, i, cite, dfn, blockquote, address) {
     transparent calc(var(--theme-wipe) + 24%),
     transparent 100%
   );
-  animation: theme-wipe 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation: theme-wipe 0.6s var(--ease-out) both;
 }
 
 @keyframes theme-wipe {
@@ -427,16 +702,17 @@ main:focus {
   outline: none;
 }
 
+/* The footer keeps clear of the dock: its own height plus the dock's. */
 .site-footer {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 0 1.5rem;
-  margin-top: 3rem;
-  padding: 1.5rem 0;
+  margin-top: 4rem;
+  padding: 1.5rem 0 calc(var(--dock-item) + 2 * var(--dock-pad) + var(--dock-bottom) + 1.5rem);
   text-align: center;
   color: var(--muted);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
 }
 
 .site-footer a {

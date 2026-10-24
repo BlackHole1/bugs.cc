@@ -73,6 +73,16 @@ const themeScript =
   `var d=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);` +
   `var m=document.querySelector('meta[name=theme-color]');` +
   `if(m)m.content=d?${JSON.stringify(SITE.themeColor.dark)}:${JSON.stringify(SITE.themeColor.light)}})();`;
+
+/**
+ * `data-revisit` on `<html>` from the second page of a visit (tab session)
+ * on: the entrance animations (dock, home page) play on the first page only,
+ * not on every navigation. Set before first paint, like the theme.
+ */
+const revisitScript =
+  `(function(){try{if(sessionStorage.getItem('visited'))` +
+  `document.documentElement.dataset.revisit='';` +
+  `sessionStorage.setItem('visited','1')}catch(e){}})();`;
 ---
 
 <!doctype html>
@@ -97,6 +107,7 @@ const themeScript =
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content={SITE.themeColor.light} />
     <script is:inline set:html={themeScript} />
+    <script is:inline set:html={revisitScript} />
     <meta name="generator" content={Astro.generator} />
     <!-- llms.txt v2 discovery: the index that covers this page (llmstxt.org). -->
     <link rel="describedby" type="text/markdown" href={llmsUrl()} />
@@ -106,7 +117,8 @@ const themeScript =
     <Font cssVariable="--font-mono" preload={preloadCodeFont} />
     <slot name="head" />
   </head>
-  <body>
+  <!-- `ontouchstart` lets iOS Safari apply `:active` (the pressed state). -->
+  <body ontouchstart="">
     <SkipLink lang={lang} target="main" />
     <Header
       lang={lang}

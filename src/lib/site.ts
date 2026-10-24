@@ -21,7 +21,7 @@ export const SITE = {
   ogImage: '/img/og.png',
   avatar: '/img/avatar.jpg',
   /** `theme-color` of each scheme (the `--bg` tokens in global.css). */
-  themeColor: { light: '#fcfcfc', dark: '#101010' },
+  themeColor: { light: '#f3f3f3', dark: '#0f0f0f' },
   /** PostHog (EU Cloud, project "bugs.cc"); see src/components/Analytics.astro. */
   posthog: {
     token: 'phc_s2Nz4676edx9KGFf47gmxZsmLJTSeJDnTJbv8VQqGhKH',

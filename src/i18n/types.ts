@@ -39,8 +39,6 @@ export interface UIStrings {
     projects: string;
     search: string;
     rss: string;
-    /** `title` of the language switch when the page has a translation. */
-    languageSwitch: string;
     /** Name suffix and `title` of the switch when the page has no translation (the switch is inert). */
     noTranslation: string;
     /** `(opens in a new tab)` hint, also appended to external links in prose. */
