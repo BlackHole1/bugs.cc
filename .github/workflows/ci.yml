@@ -19,32 +19,34 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v7
+      # Node from .node-version, bun from package.json devEngines.packageManager.
+      - uses: voidzero-dev/setup-vp@v1.22.0
         with:
           node-version-file: .node-version
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: .bun-version
+          cache: true
+          run-install: false
 
       - name: Install
-        run: bun install --frozen-lockfile
+        run: vp install --frozen-lockfile
 
-      - name: Lint
-        run: bun run lint
+      # `astro check` first: it generates .astro/ content types that `vp check` type-checks against.
+      - name: Astro check
+        run: vp run check
 
-      - name: Format check
-        run: bun run fmt:check
+      # Format, lint, and type-aware lint with type checks (vite.config.ts `fmt` / `lint`).
+      - name: Check
+        run: vp check --deny-warnings
 
-      - name: Type check
-        run: bun run check
+      - name: Markdown lint
+        run: vp run lint:md
 
       - name: Tests
-        run: bun run test
+        run: vp test run
 
-      # Fails when a PNG or JPEG under public/images/ has not been through `bun run img`.
+      # Fails when a PNG or JPEG under public/images/ has not been through `vpr img`.
       - name: Image check
-        run: bun run img --check
+        run: vp run img --check
 
+      # `vp run build` is the Astro build script; the built-in `vp build` would run plain Vite.
       - name: Build
-        run: bun run build
+        run: vp run build

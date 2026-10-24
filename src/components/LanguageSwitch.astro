@@ -36,37 +36,35 @@ const other = otherLang(lang);
 const tOther = useTranslations(other);
 ---
 
-{
-  fallback ? (
-    <span
-      class="nav-link lang-switch"
-      lang={tOther.htmlLang}
-      title={t.nav.noTranslation}
-      aria-disabled="true"
-    >
-      <Languages class="nav-icon" size={16} aria-hidden="true" focusable="false" />
-      <span>{tOther.nativeName}</span>
-      {/* Leading spaces: inline spans concatenate without a separator in the accessible name. */}
-      <span class="visually-hidden" lang={t.htmlLang}>
-        {' '}
-        ({t.languageNames[other]}) {t.nav.noTranslation}
-      </span>
+{fallback ? (
+  <span
+    class="nav-link lang-switch"
+    lang={tOther.htmlLang}
+    title={t.nav.noTranslation}
+    aria-disabled="true"
+  >
+    <Languages class="nav-icon" size={16} aria-hidden="true" focusable="false" />
+    <span>{tOther.nativeName}</span>
+    {/* Leading spaces: inline spans concatenate without a separator in the accessible name. */}
+    <span class="visually-hidden" lang={t.htmlLang}>
+      {' '}
+      ({t.languageNames[other]}) {t.nav.noTranslation}
     </span>
-  ) : (
-    <a
-      class="nav-link lang-switch"
-      href={href ?? homeUrl(other)}
-      hreflang={tOther.htmlLang}
-      lang={tOther.htmlLang}
-      title={t.nav.languageSwitch}
-      data-astro-prefetch="viewport"
-    >
-      <Languages class="nav-icon" size={16} aria-hidden="true" focusable="false" />
-      <span class="link-text">{tOther.nativeName}</span>
-      <span class="visually-hidden" lang={t.htmlLang}>
-        {' '}
-        ({t.languageNames[other]})
-      </span>
-    </a>
-  )
-}
+  </span>
+) : (
+  <a
+    class="nav-link lang-switch"
+    href={href ?? homeUrl(other)}
+    hreflang={tOther.htmlLang}
+    lang={tOther.htmlLang}
+    title={t.nav.languageSwitch}
+    data-astro-prefetch="viewport"
+  >
+    <Languages class="nav-icon" size={16} aria-hidden="true" focusable="false" />
+    <span class="link-text">{tOther.nativeName}</span>
+    <span class="visually-hidden" lang={t.htmlLang}>
+      {' '}
+      ({t.languageNames[other]})
+    </span>
+  </a>
+)}

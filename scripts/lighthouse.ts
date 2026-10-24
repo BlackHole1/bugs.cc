@@ -9,8 +9,8 @@
  * A built-in server is used instead of `astro preview` because Astro 7's
  * preview is a background daemon that refuses to start a second instance.
  *
- *   bun run lh                  all pages in PAGES
- *   bun run lh /zh/ /posts/     only these paths
+ *   vpr lh                  all pages in PAGES
+ *   vpr lh /zh/ /posts/     only these paths
  *
  * Env:
  *   LH_OUT         output directory (default `.lh/`)
@@ -187,7 +187,7 @@ function summarize(page: string, preset: Preset, lhr: Lhr): Result {
 }
 
 if (process.env.LH_SKIP_BUILD !== '1' || !existsSync(path.join(root, 'dist/index.html'))) {
-  await run('bun', ['run', 'build']);
+  await run('vp', ['run', 'build']);
 }
 mkdirSync(outDir, { recursive: true });
 
@@ -216,7 +216,7 @@ try {
       if (preset === 'desktop') args.push('--preset=desktop');
       if (blocked.length > 0) args.push(`--blocked-url-patterns=${blocked.join(',')}`);
       console.info(`\nlighthouse ${page} [${preset}]`);
-      await run('bunx', args, { CHROME_PATH: chrome });
+      await run('vp', ['exec', ...args], { CHROME_PATH: chrome });
       const lhr = JSON.parse(readFileSync(`${outPath}.report.json`, 'utf8')) as Lhr;
       results.push(summarize(page, preset, lhr));
     }

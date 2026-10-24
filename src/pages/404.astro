@@ -20,6 +20,10 @@ const zh = useTranslations('zh');
   noCanonical
 >
   <h1>{en.notFound.heading}</h1>
-  <p>{en.notFound.body} <a href={homeUrl('en')}>{en.notFound.backHome}</a></p>
-  <p lang={zh.htmlLang}>{zh.notFound.body} <a href={homeUrl('zh')}>{zh.notFound.backHome}</a></p>
+  <p>
+    {en.notFound.body} <a href={homeUrl('en')}>{en.notFound.backHome}</a>
+  </p>
+  <p lang={zh.htmlLang}>
+    {zh.notFound.body} <a href={homeUrl('zh')}>{zh.notFound.backHome}</a>
+  </p>
 </Base>

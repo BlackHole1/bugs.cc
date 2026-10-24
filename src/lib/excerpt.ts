@@ -73,7 +73,7 @@ export function firstParagraph(body: string): string {
 
 /** Truncate on a character boundary, appending an ellipsis if cut. */
 export function truncate(text: string, max = EXCERPT_MAX): string {
-  const chars = [...text];
+  const chars = Array.from(text);
   if (chars.length <= max) return text;
   const cut = chars.slice(0, Math.max(1, max - 1)).join('');
   // Prefer cutting at whitespace for Latin text; CJK has no spaces, keep as-is.

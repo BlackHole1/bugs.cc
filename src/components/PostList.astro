@@ -23,16 +23,14 @@ const t = useTranslations(lang);
 ---
 
 <ul class="post-list" lang={t.htmlLang} aria-labelledby={labelledBy}>
-  {
-    posts.map((post) => (
-      <li>
-        <time datetime={toIsoWithOffset(post.data.date)}>{formatDate(post.data.date)}</time>
-        <a href={pathOf(post)} data-astro-prefetch={prefetch}>
-          {post.data.title}
-        </a>
-      </li>
-    ))
-  }
+  {posts.map((post) => (
+    <li>
+      <time datetime={toIsoWithOffset(post.data.date)}>{formatDate(post.data.date)}</time>
+      <a href={pathOf(post)} data-astro-prefetch={prefetch}>
+        {post.data.title}
+      </a>
+    </li>
+  ))}
 </ul>
 
 <style>

@@ -118,7 +118,9 @@ const breadcrumbs = {
   <JsonLd slot="head" data={jsonLd} />
   <JsonLd slot="head" data={breadcrumbs} />
   <article class="post" aria-labelledby="post-title" data-pagefind-body>
-    <h1 id="post-title" class="post-title">{post.data.title}</h1>
+    <h1 id="post-title" class="post-title">
+      {post.data.title}
+    </h1>
     <PostMeta
       lang={lang}
       date={post.data.date}
@@ -142,7 +144,9 @@ const breadcrumbs = {
           <Forward class="reply-icon" size={16} aria-hidden="true" focusable="false" />
         </span>
       </a>
-      <a href={markdownPath}><span class="link-text">{t.post.viewMarkdown}</span></a>
+      <a href={markdownPath}>
+        <span class="link-text">{t.post.viewMarkdown}</span>
+      </a>
     </p>
   </article>
   <PrevNext
@@ -151,14 +155,12 @@ const breadcrumbs = {
     next={next ? { href: pathOf(next), title: next.data.title } : undefined}
   />
   {hasFootnotes && <Sidenotes />}
-  {
-    hasImages && (
-      <Lightbox
-        selector=".post-body img"
-        label={t.lightbox.label}
-        openHint={t.lightbox.open}
-        closeLabel={t.lightbox.close}
-      />
-    )
-  }
+  {hasImages && (
+    <Lightbox
+      selector=".post-body img"
+      label={t.lightbox.label}
+      openHint={t.lightbox.open}
+      closeLabel={t.lightbox.close}
+    />
+  )}
 </Base>

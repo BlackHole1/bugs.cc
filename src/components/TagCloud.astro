@@ -21,14 +21,12 @@ const t = useTranslations(lang);
 ---
 
 <ul class="tag-cloud" aria-label={label ?? t.tags.cloudLabel}>
-  {
-    tags.map((tag) => (
-      <li>
-        <a href={tagUrl(lang, tag.tag)}>#{tag.tag}</a>
-        {showCount && <span class="count">{t.tags.postCount(tag.count)}</span>}
-      </li>
-    ))
-  }
+  {tags.map((tag) => (
+    <li>
+      <a href={tagUrl(lang, tag.tag)}>#{tag.tag}</a>
+      {showCount && <span class="count">{t.tags.postCount(tag.count)}</span>}
+    </li>
+  ))}
 </ul>
 
 <style>

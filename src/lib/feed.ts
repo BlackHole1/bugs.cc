@@ -81,7 +81,7 @@ export async function renderFeedHtml(
 ): Promise<string> {
   const isMdx = post.filePath?.endsWith('.mdx') ?? false;
   const source = isMdx ? mdxToMarkdown(post.body ?? '') : (post.body ?? '');
-  const { html } = await markdownToHtml(source, {
+  const { html } = markdownToHtml(source, {
     hastPlugins: [absoluteUrls(site, pathOf(post)), footnotes({ lang: langOf(post) })],
     features: { gfm: true, smartPunctuation: true, frontmatter: false },
   });

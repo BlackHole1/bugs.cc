@@ -1,6 +1,6 @@
 /**
  * Generate the static default social image `public/img/og.png` (1200x630).
- * Run with `bun run og`. Uses sharp (also Astro's image service).
+ * Run with `vpr og`. Uses sharp (also Astro's image service).
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';

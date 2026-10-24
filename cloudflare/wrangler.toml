@@ -1,4 +1,4 @@
-# `bunx wrangler deploy -c cloudflare/wrangler.toml` (needs CLOUDFLARE_API_TOKEN
+# `vp dlx wrangler deploy -c cloudflare/wrangler.toml` (needs CLOUDFLARE_API_TOKEN
 # with Workers Scripts Edit + Workers Routes Edit on bugs.cc). The custom
 # domain t.bugs.cc is managed by this route: Cloudflare creates the DNS record
 # and the certificate itself.

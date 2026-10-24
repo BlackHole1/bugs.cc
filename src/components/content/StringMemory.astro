@@ -89,23 +89,23 @@ const variants = [variant('raw', false), variant('escaped', true)];
       {t.escape}
     </label>
   </div>
-  {
-    variants.map((v) => (
-      <div class="sm-result" data-variant={v.name}>
-        {/* prettier-ignore */}
-        <pre class="sm-preview" data-preview>{v.preview.segments.map((s) => (s.wide ? <mark>{s.text}</mark> : s.text))}{v.preview.truncated && <span class="sm-cut">{fill(t.truncated, { limit: formatCount(PREVIEW_LIMIT) })}</span>}</pre>
-        <dl class="sm-stats">
-          {rows.map((row) => (
-            <div>
-              <dt>{t[row]}</dt>
-              <dd data-stat={row}>{v.stats[row]}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-    ))
-  }
-  <p class="sm-hint" data-hint hidden>{t.hint}</p>
+  {variants.map((v) => (
+    <div class="sm-result" data-variant={v.name}>
+      {/* prettier-ignore */}
+      <pre class="sm-preview" data-preview>{v.preview.segments.map((s) => (s.wide ? <mark>{s.text}</mark> : s.text))}{v.preview.truncated && <span class="sm-cut">{fill(t.truncated, { limit: formatCount(PREVIEW_LIMIT) })}</span>}</pre>
+      <dl class="sm-stats">
+        {rows.map((row) => (
+          <div>
+            <dt>{t[row]}</dt>
+            <dd data-stat={row}>{v.stats[row]}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  ))}
+  <p class="sm-hint" data-hint hidden>
+    {t.hint}
+  </p>
 </figure>
 
 <style is:global>

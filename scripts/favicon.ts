@@ -3,7 +3,7 @@
  * `public/favicon.ico` (32x32, circular, PNG-compressed ICO),
  * `public/favicon.png` (192x192, circular) and `public/apple-touch-icon.png`
  * (180x180, square and opaque; iOS rounds the corners itself).
- * Run with `bun run favicon`. Uses sharp (also Astro's image service).
+ * Run with `vpr favicon`. Uses sharp (also Astro's image service).
  */
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';

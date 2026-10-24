@@ -8,18 +8,18 @@
     "build": "astro build --force && pagefind --site dist",
     "preview": "astro preview",
     "check": "astro check",
-    "lint": "oxlint --deny-warnings && markdownlint-cli2",
+    "lint": "vp lint --deny-warnings && markdownlint-cli2",
     "lint:md": "markdownlint-cli2",
     "lint:md:fix": "markdownlint-cli2 --fix",
-    "fmt": "oxfmt && prettier --write \"src/**/*.astro\"",
-    "fmt:check": "oxfmt --check && prettier --check \"src/**/*.astro\"",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "og": "bun scripts/og-image.ts",
-    "favicon": "bun scripts/favicon.ts",
-    "font": "bun scripts/subset-font.ts",
-    "img": "bun scripts/img.ts",
-    "lh": "bun scripts/lighthouse.ts"
+    "fmt": "vp fmt",
+    "fmt:check": "vp fmt --check",
+    "test": "vp test run",
+    "test:watch": "vp test watch",
+    "og": "vpx scripts/og-image.ts",
+    "favicon": "vpx scripts/favicon.ts",
+    "font": "vpx scripts/subset-font.ts",
+    "img": "vpx scripts/img.ts",
+    "lh": "vpx scripts/lighthouse.ts"
   },
   "dependencies": {
     "@astrojs/markdown-satteri": "^0.3.8",
@@ -36,21 +36,29 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
+    "@astrojs/compiler-rs": "^0.5.2",
     "@types/hast": "^3.0.4",
     "@types/node": "^26.3.0",
     "lighthouse": "13.4.1",
     "markdownlint-cli2": "^0.23.2",
     "node-html-parser": "^9.0.1",
-    "oxfmt": "^0.65.0",
-    "oxlint": "^1.80.0",
     "pagefind": "^1.5.2",
-    "prettier": "^3.9.6",
-    "prettier-plugin-astro": "^0.14.1",
     "sharp": "^0.35.3",
     "subset-font": "2.5.0",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.11",
+    "vite": "npm:@voidzero-dev/vite-plus-core@1.4.0",
+    "vite-plus": "1.4.0",
     "yaml": "^2.9.0"
+  },
+  "overrides": {
+    "vite": "npm:@voidzero-dev/vite-plus-core@1.4.0"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "bun",
+      "version": "1.4.4",
+      "onFail": "download"
+    }
   },
   "engines": {
     "node": ">=22.18.0"

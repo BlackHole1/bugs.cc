@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { detectLang, estimateReadingTime, readingTime } from '@/plugins/reading-time';
 import { compile } from '../helpers/satteri';
 
