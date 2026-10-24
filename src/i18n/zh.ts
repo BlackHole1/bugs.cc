@@ -18,7 +18,6 @@ export const zh: UIStrings = {
     projects: '项目',
     search: '搜索',
     rss: 'RSS',
-    languageSwitch: '切换语言',
     noTranslation: '本页没有英文版',
     externalLink: '在新标签页打开',
     themeAuto: '跟随系统主题',

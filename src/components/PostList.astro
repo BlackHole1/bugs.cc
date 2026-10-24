@@ -34,18 +34,27 @@ const t = useTranslations(lang);
 </ul>
 
 <style>
+  /*
+   * Rows of `date  title`. The whole row is the target (the link's
+   * `::after` covers it: no dead zones between rows, "Web 流畅界面建议");
+   * hovering anywhere on it sweeps the title's underline in. The row bleeds
+   * into its padding so the dates line up with the text column and the
+   * focus ring has room.
+   */
   .post-list {
     list-style: none;
     padding: 0;
-    margin: 0 0 1.5rem;
+    /* Never wider than the gutter (text-only zoom grows the rem). */
+    margin: 0 calc(-1 * min(0.75rem, var(--gutter))) 1.5rem;
   }
 
   .post-list li {
+    position: relative;
     display: flex;
-    gap: 0.8em;
+    gap: 1em;
     align-items: baseline;
     margin: 0;
-    padding: 0.35em 0;
+    padding: 0.55em 0.75rem;
   }
 
   .post-list time {
@@ -54,7 +63,28 @@ const t = useTranslations(lang);
     white-space: nowrap;
   }
 
+  .post-list a {
+    color: var(--heading);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .post-list a::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-sm);
+  }
+
   .post-list a:visited {
-    color: var(--link-visited);
+    color: var(--muted);
+  }
+
+  .post-list a:focus-visible {
+    outline: none;
+  }
+
+  .post-list a:focus-visible::after {
+    outline: 2px solid var(--focus);
+    outline-offset: 0;
   }
 </style>

@@ -9,7 +9,7 @@ h4,
 h5,
 h6 {
   color: var(--heading);
-  font-weight: bold;
+  font-weight: 600;
   line-height: 1.3;
   margin: 1.6em 0 0.6em;
   scroll-margin-top: 1rem;
@@ -17,14 +17,15 @@ h6 {
 }
 
 h1 {
-  font-size: 2.125rem;
+  font-size: 2.25rem;
   line-height: 1.2;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   margin: 0.5em 0;
 }
 
 h2 {
   font-size: 1.5rem;
+  letter-spacing: -0.01em;
   margin-top: 1.8em;
 }
 
@@ -94,14 +95,18 @@ a:where(:not(.heading-anchor, [data-footnote-ref], :has(img), :has(.link-text)))
   transition: background-size var(--underline-duration) var(--underline-ease);
 }
 
-a:where(:not(.heading-anchor, [data-footnote-ref], :has(img), :has(.link-text))):hover,
-a:hover .link-text {
-  background-position:
-    0 100%,
-    0 100%;
-  background-size:
-    100% 2px,
-    100% 1px;
+/* Hover only where there is hover: on a touch screen the state would stick
+   to the link after the tap. */
+@media (hover: hover) {
+  a:where(:not(.heading-anchor, [data-footnote-ref], :has(img), :has(.link-text))):hover,
+  a:hover .link-text {
+    background-position:
+      0 100%,
+      0 100%;
+    background-size:
+      100% 2px,
+      100% 1px;
+  }
 }
 
 /* Heading anchors (plugins/heading-anchors): an empty link after the heading
@@ -154,7 +159,7 @@ hr {
 blockquote {
   margin: 1em 0;
   padding: 0 1em;
-  border-left: 4px solid var(--quote-border);
+  border-left: 3px solid var(--quote-border);
   color: var(--muted);
 }
 
@@ -200,6 +205,13 @@ video {
   margin: 1em auto;
 }
 
+/* Images in posts sit on the page like the cards do: rounded, with a
+   hairline so a white screenshot still has an edge on the grey sheet. */
+.post-body img {
+  border-radius: var(--radius);
+  box-shadow: 0 0 0 1px var(--hairline);
+}
+
 /* Zoom buttons wrapped around images by the Lightbox island. */
 .zoomable {
   display: block;
@@ -233,8 +245,8 @@ kbd {
   padding: 0.1em 0.4em;
   border: 1px solid var(--border);
   border-bottom-width: 2px;
-  border-radius: 4px;
-  background: var(--zebra);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
   color: var(--heading);
 }
 
@@ -261,7 +273,8 @@ time {
 
 /* Long URLs and identifiers in prose must not widen the page. */
 .post-body,
-.bio {
+.bio,
+.lead {
   overflow-wrap: anywhere;
 }
 
@@ -273,7 +286,8 @@ iframe {
    also appends the visually hidden "(opens in a new tab)"): a small
    external-link icon (Lucide) after the text. Image links get none. */
 .post-body a[target='_blank']:not(:has(img))::after,
-.bio a[target='_blank']:not(:has(img))::after {
+.bio a[target='_blank']:not(:has(img))::after,
+.lead a[target='_blank']:not(:has(img))::after {
   content: '';
   display: inline-block;
   width: 0.6em;
@@ -576,7 +590,7 @@ a[data-footnote-ref].is-active {
   border: solid currentColor;
   border-width: 0 2px 2px 0;
   transform: rotate(-45deg);
-  transition: transform 0.15s ease;
+  transition: transform var(--dur) var(--ease-out);
 }
 
 .toc details[open] > summary::before {
@@ -610,7 +624,7 @@ a[data-footnote-ref].is-active {
   color: var(--muted);
   background-image: none;
   line-height: 1.5;
-  transition: color 0.2s ease;
+  transition: color var(--dur-fast) var(--ease-out);
 }
 
 .toc a:hover {
@@ -648,8 +662,8 @@ a[data-footnote-ref].is-active {
   background: var(--link);
   transform: translateY(var(--toc-active-top, 0));
   transition:
-    transform 0.25s ease-out,
-    height 0.25s ease-out;
+    transform var(--dur) var(--ease-out),
+    height var(--dur) var(--ease-out);
 }
 
 @supports not ((mask-image: none) or (-webkit-mask-image: none)) {
@@ -658,29 +672,61 @@ a[data-footnote-ref].is-active {
   }
 }
 
-/* Previous / next post. */
+/* Previous / next post: two framed cards side by side (one under the other
+   on phones); on hover the frame darkens and the arrow leans the way it
+   goes, the card gives a little under the finger. */
 .prev-next {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 0.5rem 1.5rem;
-  margin-top: 2rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 0.75rem;
+  margin-top: 3rem;
 }
 
 .prev-next-link {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.5em;
+  gap: 0.75em;
   min-height: var(--tap);
-  padding: 0.35em 0;
-  max-width: 100%;
+  padding: 0.9rem 1.1rem;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--heading);
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  --underline-rest: transparent;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    transform var(--dur) var(--ease-out);
+}
+
+.prev-next-link:active {
+  transform: scale(0.985);
 }
 
 .prev-next-link.next {
-  margin-left: auto;
+  grid-column: -2;
+  justify-content: flex-end;
   text-align: right;
+}
+
+.prev-next-icon {
+  transition: transform var(--dur) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .prev-next-link:hover {
+    border-color: var(--edge-strong);
+  }
+
+  .prev-next-link.prev:hover .prev-next-icon {
+    transform: translateX(-3px);
+  }
+
+  .prev-next-link.next:hover .prev-next-icon {
+    transform: translateX(3px);
+  }
 }
 
 .prev-next-label {
@@ -738,7 +784,7 @@ a[data-footnote-ref].is-active {
     margin-left: -0.25rem;
     border-radius: 0.25rem;
     color: var(--muted);
-    transition: color 0.3s ease;
+    transition: color var(--dur-fast) var(--ease-out);
   }
 
   .toc summary::before {

@@ -75,9 +75,12 @@ const path = searchUrl(lang);
     width: 100%;
     min-height: var(--tap);
     padding: 0.5em 0.9em;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--zebra);
+    border: 1px solid var(--edge);
+    border-radius: var(--radius);
+    background: var(--surface);
+    transition:
+      border-color var(--dur-fast) var(--ease-out),
+      box-shadow var(--dur-fast) var(--ease-out);
     color: var(--heading);
     font: inherit;
     font-size: 1.125rem;
@@ -85,6 +88,7 @@ const path = searchUrl(lang);
 
   .search-input:focus {
     border-color: var(--link);
+    box-shadow: 0 0 0 3px var(--selection);
     outline: none;
   }
 

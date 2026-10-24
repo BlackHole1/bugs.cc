@@ -18,7 +18,6 @@ export const en: UIStrings = {
     projects: 'Projects',
     search: 'Search',
     rss: 'RSS',
-    languageSwitch: 'Switch language',
     noTranslation: 'No Chinese version of this page',
     externalLink: 'opens in a new tab',
     themeAuto: 'Follow the system theme',
