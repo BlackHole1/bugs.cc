@@ -21,37 +21,30 @@ const t = useTranslations(lang);
 >
   <h1>{t.projects.title}</h1>
   <p>{t.projects.intro}</p>
-  {
-    PROJECT_GROUPS.map((group, i) => (
-      <section class="project-group" aria-labelledby={`project-group-${i}`}>
-        <h2 id={`project-group-${i}`}>{group.title[lang]}</h2>
-        <ul class="project-grid">
-          {group.projects.map((project) => {
-            const Icon = project.icon;
-            return (
-              <li>
-                <a
-                  class="project-card"
-                  href={project.repo}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Icon class="project-icon" size={28} aria-hidden="true" focusable="false" />
-                  <span class="project-body">
-                    <span class="project-name link-text">
-                      {project.name}
-                      <span class="visually-hidden"> ({t.nav.externalLink})</span>
-                    </span>
-                    <span class="project-desc">{project.description[lang]}</span>
+  {PROJECT_GROUPS.map((group, i) => (
+    <section class="project-group" aria-labelledby={`project-group-${i}`}>
+      <h2 id={`project-group-${i}`}>{group.title[lang]}</h2>
+      <ul class="project-grid">
+        {group.projects.map((project) => {
+          const Icon = project.icon;
+          return (
+            <li>
+              <a class="project-card" href={project.repo} target="_blank" rel="noopener noreferrer">
+                <Icon class="project-icon" size={28} aria-hidden="true" focusable="false" />
+                <span class="project-body">
+                  <span class="project-name link-text">
+                    {project.name}
+                    <span class="visually-hidden"> ({t.nav.externalLink})</span>
                   </span>
-                </a>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-    ))
-  }
+                  <span class="project-desc">{project.description[lang]}</span>
+                </span>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  ))}
 </Base>
 
 <style>

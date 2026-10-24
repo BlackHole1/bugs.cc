@@ -6,7 +6,7 @@
  * is pinned at 400: 29 KB. The `calt`/`liga` ligatures survive (harfbuzz keeps
  * every glyph reachable through the layout tables).
  *
- *   bun run font           # writes src/assets/fonts/FiraCode-latin-400.woff2
+ *   vpr font           # writes src/assets/fonts/FiraCode-latin-400.woff2
  *
  * Re-run after replacing `FiraCode-VF.woff2`; the output is committed so a
  * normal build never needs this script.

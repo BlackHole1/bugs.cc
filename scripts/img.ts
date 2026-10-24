@@ -26,9 +26,9 @@
  * same quality lands within 2 % of its size, so a second run never rewrites
  * it (and there is no generation loss).
  *
- *   bun run img                   all of public/images/
- *   bun run img public/images/x/  only these files or directories
- *   bun run img --check           write nothing; exit 1 when a file would change
+ *   vpr img                   all of public/images/
+ *   vpr img public/images/x/  only these files or directories
+ *   vpr img --check           write nothing; exit 1 when a file would change
  *
  * Env: IMG_QUALITY (libimagequant target, default 90), IMG_JPEG_QUALITY
  * (mozjpeg, default 85), IMG_MIN_PSNR (default 40).
@@ -228,6 +228,6 @@ console.info(
     `${skipped.length} skipped (not PNG/JPEG): ${kb(before)} -> ${kb(after)} in ${seconds}s`,
 );
 if (check && changed.length > 0) {
-  console.error('\nunoptimised images found; run `bun run img` and commit the result');
+  console.error('\nunoptimised images found; run `vpr img` and commit the result');
   process.exitCode = 1;
 }

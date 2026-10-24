@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { excerpt, firstParagraph, stripMarkdown, truncate } from '@/lib/excerpt';
 
 describe('excerpt', () => {
@@ -42,7 +42,7 @@ Second paragraph.
   it('truncates to 160 characters with an ellipsis', () => {
     const long = 'word '.repeat(60).trim();
     const out = truncate(long);
-    expect([...out].length).toBeLessThanOrEqual(160);
+    expect(Array.from(out).length).toBeLessThanOrEqual(160);
     expect(out.endsWith('…')).toBe(true);
     expect(truncate('short')).toBe('short');
   });
@@ -50,7 +50,7 @@ Second paragraph.
   it('handles CJK text without spaces', () => {
     const zh = '中'.repeat(200);
     const out = excerpt(zh);
-    expect([...out].length).toBe(160);
+    expect(Array.from(out).length).toBe(160);
     expect(out.endsWith('…')).toBe(true);
   });
 

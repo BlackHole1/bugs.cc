@@ -71,7 +71,7 @@ function groupedFence(node: RootContent): GroupedFence | undefined {
   const fence = fenceMeta(node);
   if (!fence || !GROUP_RE.test(fence.meta)) return undefined;
   const title = TITLE_RE.exec(fence.meta);
-  const lang = (fence.code.properties.className as string[] | undefined)
+  const lang = fence.code.properties.className
     ?.find((c) => c.startsWith('language-'))
     ?.slice('language-'.length);
   return { pre: node, label: title?.[1] ?? title?.[2] ?? title?.[3] ?? lang ?? '' };

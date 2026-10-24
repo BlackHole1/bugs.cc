@@ -69,7 +69,9 @@ const panels = cpuDay.pods.map((pod, i) => ({
       <input type="checkbox" data-windows-toggle />
       {t.windows}
     </label>
-    <button type="button" class="cpu-day-reset" data-reset hidden>{t.reset}</button>
+    <button type="button" class="cpu-day-reset" data-reset hidden>
+      {t.reset}
+    </button>
   </div>
   <div class="cpu-day-plot">
     <svg
@@ -84,78 +86,77 @@ const panels = cpuDay.pods.map((pod, i) => ({
           <rect x={PAD_L} y="0" width={PLOT_W} height={height}></rect>
         </clipPath>
       </defs>
-      {
-        panels.map(({ pod, top, bottom, path, sends }) => (
-          <g class="panel" data-panel={pod}>
-            <g class="grid-v" data-grid>
-              {gridTicks.map(({ t: tt }) => (
-                <line x1={xOf(tt, view)} x2={xOf(tt, view)} y1={top} y2={bottom} />
+      {panels.map(({ pod, top, bottom, path, sends }) => (
+        <g class="panel" data-panel={pod}>
+          <g class="grid-v" data-grid>
+            {gridTicks.map(({ t: tt }) => (
+              <line x1={xOf(tt, view)} x2={xOf(tt, view)} y1={top} y2={bottom} />
+            ))}
+          </g>
+          {[0.5, 1].map((v) => (
+            <>
+              <line class="grid-h" x1={PAD_L} x2={W - PAD_R} y1={yOf(v, top)} y2={yOf(v, top)} />
+              <text class="axis" x={PAD_L - 8} y={yOf(v, top) + 4} text-anchor="end">
+                {v.toFixed(1)}
+              </text>
+            </>
+          ))}
+          <g clip-path={`url(#${id}-clip)`}>
+            <g class="windows" data-windows>
+              {sends.map((st) => (
+                <rect
+                  x={xOf(st, view)}
+                  y={top}
+                  width={xOf(st + WINDOW, view) - xOf(st, view)}
+                  height={PANEL_H}
+                  data-t={st}
+                />
               ))}
             </g>
-            {[0.5, 1].map((v) => (
-              <>
-                <line class="grid-h" x1={PAD_L} x2={W - PAD_R} y1={yOf(v, top)} y2={yOf(v, top)} />
-                <text class="axis" x={PAD_L - 8} y={yOf(v, top) + 4} text-anchor="end">
-                  {v.toFixed(1)}
-                </text>
-              </>
-            ))}
-            <g clip-path={`url(#${id}-clip)`}>
-              <g class="windows" data-windows>
-                {sends.map((st) => (
-                  <rect
-                    x={xOf(st, view)}
-                    y={top}
-                    width={xOf(st + WINDOW, view) - xOf(st, view)}
-                    height={PANEL_H}
-                    data-t={st}
-                  />
-                ))}
-              </g>
-              <g class="area">
-                <path id={`${id}-${pod}`} d={path} data-series={pod} />
-              </g>
-              <g class="line">
-                <use href={`#${id}-${pod}`} />
-              </g>
-              <g class="sends">
-                {sends.map((st) => (
-                  <line
-                    x1={xOf(st, view)}
-                    x2={xOf(st, view)}
-                    y1={bottom + TICK_GAP}
-                    y2={bottom + TICK_GAP + TICK_H}
-                    data-t={st}
-                  />
-                ))}
-              </g>
+            <g class="area">
+              <path id={`${id}-${pod}`} d={path} data-series={pod} />
             </g>
-            <line class="base" x1={PAD_L} x2={W - PAD_R} y1={bottom} y2={bottom} />
-            <text class="label" x={PAD_L} y={top - 8}>
-              pod {pod}
-            </text>
+            <g class="line">
+              <use href={`#${id}-${pod}`} />
+            </g>
+            <g class="sends">
+              {sends.map((st) => (
+                <line
+                  x1={xOf(st, view)}
+                  x2={xOf(st, view)}
+                  y1={bottom + TICK_GAP}
+                  y2={bottom + TICK_GAP + TICK_H}
+                  data-t={st}
+                />
+              ))}
+            </g>
           </g>
-        ))
-      }
+          <line class="base" x1={PAD_L} x2={W - PAD_R} y1={bottom} y2={bottom} />
+          <text class="label" x={PAD_L} y={top - 8}>
+            pod {pod}
+          </text>
+        </g>
+      ))}
       <g class="hours" data-hours>
-        {
-          ticks.map(({ t: tt, label }) => (
-            <text class="axis" x={xOf(tt, view)} y={height - 6} text-anchor="middle">
-              {label}
-            </text>
-          ))
-        }
+        {ticks.map(({ t: tt, label }) => (
+          <text class="axis" x={xOf(tt, view)} y={height - 6} text-anchor="middle">
+            {label}
+          </text>
+        ))}
       </g>
       <line
         class="cursor is-hidden"
         data-cursor
         y1={panelTop(0) - 12}
-        y2={panelBottom(panels.length - 1) + TICK_GAP + TICK_H}></line>
+        y2={panelBottom(panels.length - 1) + TICK_GAP + TICK_H}
+      ></line>
       <rect class="brush is-hidden" data-brush y="0" height={height}></rect>
     </svg>
     <div class="cpu-day-tip" data-tip role="status" hidden></div>
   </div>
-  <p class="cpu-day-hint" id={`${id}-hint`} data-hint hidden>{t.hint}</p>
+  <p class="cpu-day-hint" id={`${id}-hint`} data-hint hidden>
+    {t.hint}
+  </p>
 </figure>
 
 <style is:global>

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { buildToc, countToc, shouldRenderToc } from '@/lib/toc';
 
 const h = (depth: number, slug: string) => ({ depth, slug, text: slug });

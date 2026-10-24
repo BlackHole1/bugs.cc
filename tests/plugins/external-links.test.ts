@@ -1,5 +1,5 @@
 import { defineHastPlugin } from 'satteri';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { externalLinks, isExternalHref } from '@/plugins/external-links';
 import { compile } from '../helpers/satteri';
 

@@ -11,4 +11,6 @@ const { lang, target = 'main' } = Astro.props;
 const t = useTranslations(lang);
 ---
 
-<a class="skip-link" href={`#${target}`}>{t.skipToContent}</a>
+<a class="skip-link" href={`#${target}`}>
+  {t.skipToContent}
+</a>

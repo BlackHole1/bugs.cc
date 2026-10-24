@@ -80,20 +80,22 @@ if (html !== undefined) {
   <JsonLd slot="head" data={profile} />
   <h1 class="visually-hidden">{t.siteTitle}</h1>
   <section class="bio" aria-labelledby="bio-heading">
-    <h2 id="bio-heading" class="visually-hidden">{t.home.aboutHeading}</h2>
+    <h2 id="bio-heading" class="visually-hidden">
+      {t.home.aboutHeading}
+    </h2>
     {body !== undefined && <Fragment set:html={body} />}
     {Content && <Content />}
   </section>
   <section aria-labelledby="recent-heading">
     <h2 id="recent-heading">{t.home.recentPosts}</h2>
-    {
-      recent.length === 0 ? (
-        <p>{t.home.noPosts}</p>
-      ) : (
-        <PostList posts={recent} {lang} labelledBy="recent-heading" prefetch="viewport" />
-      )
-    }
-    <p><a href={postsIndexUrl(lang)}>{t.home.allPosts}</a></p>
+    {recent.length === 0 ? (
+      <p>{t.home.noPosts}</p>
+    ) : (
+      <PostList posts={recent} {lang} labelledBy="recent-heading" prefetch="viewport" />
+    )}
+    <p>
+      <a href={postsIndexUrl(lang)}>{t.home.allPosts}</a>
+    </p>
   </section>
   <!-- Live clock for the `%%CLOCK%%` token; a no-op when the page has no clock. -->
   <script is:inline>

@@ -6,7 +6,7 @@
 import { ExpressiveCode } from 'astro-expressive-code';
 import { toHtml } from 'hast-util-to-html';
 import { parse } from 'node-html-parser';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { notationMarkers } from '@/expressive-code/notation-markers';
 
 // Engine defaults (built-in themes): only the marker classes are asserted.

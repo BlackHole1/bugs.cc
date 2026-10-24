@@ -42,7 +42,9 @@ function renderList(items: TocEntry[]): string {
   <details id="toc" open>
     <summary>
       <TocIcon class="toc-icon" size={20} aria-hidden="true" focusable="false" />
-      <span id="toc-heading" class="toc-label">{t.post.tableOfContents}</span>
+      <span id="toc-heading" class="toc-label">
+        {t.post.tableOfContents}
+      </span>
     </summary>
     <div class="toc-body">
       <div class="toc-list-wrap">

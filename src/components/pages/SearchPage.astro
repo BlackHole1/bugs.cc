@@ -44,7 +44,9 @@ const path = searchUrl(lang);
     data-l-loading={t.search.loading}
     data-l-error={t.search.error}
   >
-    <label class="visually-hidden" for="search-query">{t.search.label}</label>
+    <label class="visually-hidden" for="search-query">
+      {t.search.label}
+    </label>
     <input
       id="search-query"
       class="search-input"
@@ -59,7 +61,9 @@ const path = searchUrl(lang);
   </form>
   <p class="search-status" aria-live="polite" data-search-status></p>
   <ol class="search-results" data-search-results></ol>
-  <noscript><p>{t.search.needsJs}</p></noscript>
+  <noscript>
+    <p>{t.search.needsJs}</p>
+  </noscript>
 </Base>
 
 <style>

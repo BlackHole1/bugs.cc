@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { bodyMarkdown, rewriteLocalUrls, splitCodeSpans } from '@/lib/llms';
 
 const abs = (url: string) =>

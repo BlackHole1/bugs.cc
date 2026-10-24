@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { headingAnchors } from '@/plugins/heading-anchors';
 import { compile } from '../helpers/satteri';
 

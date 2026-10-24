@@ -33,16 +33,14 @@ for (const post of posts) {
 >
   <h1>{t.posts.title}</h1>
   {posts.length === 0 && <p>{t.home.noPosts}</p>}
-  {
-    [...byYear].map(([year, group]) => (
-      <section class="year" aria-labelledby={`year-${year}`}>
-        <h2 id={`year-${year}`} class="year-heading">
-          {year}
-        </h2>
-        <PostList posts={group} {lang} labelledBy={`year-${year}`} />
-      </section>
-    ))
-  }
+  {[...byYear].map(([year, group]) => (
+    <section class="year" aria-labelledby={`year-${year}`}>
+      <h2 id={`year-${year}`} class="year-heading">
+        {year}
+      </h2>
+      <PostList posts={group} {lang} labelledBy={`year-${year}`} />
+    </section>
+  ))}
   {tags.length > 0 && <TagCloud {tags} {lang} />}
 </Base>
 

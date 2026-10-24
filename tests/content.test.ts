@@ -13,7 +13,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import GithubSlugger, { slug as slugify } from 'github-slugger';
 import { parse as parseYaml } from 'yaml';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { asciiSlug } from '@/plugins/heading-anchors';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));

@@ -71,12 +71,12 @@ const xDefault = alternates.en ?? alternates[lang] ?? path;
 <meta name="author" content={SITE.author} />
 {noindex && <meta name="robots" content="noindex" />}
 {canonical && <link rel="canonical" href={canonical} />}
-{hreflangs.map((h) => <link rel="alternate" hreflang={h.hreflang} href={h.href} />)}
-{
-  hreflangs.length > 0 && (
-    <link rel="alternate" hreflang="x-default" href={absoluteUrl(xDefault, site)} />
-  )
-}
+{hreflangs.map((h) => (
+  <link rel="alternate" hreflang={h.hreflang} href={h.href} />
+))}
+{hreflangs.length > 0 && (
+  <link rel="alternate" hreflang="x-default" href={absoluteUrl(xDefault, site)} />
+)}
 <link
   rel="alternate"
   type="application/rss+xml"
@@ -96,7 +96,9 @@ const xDefault = alternates.en ?? alternates[lang] ?? path;
 <meta property="og:image:height" content="630" />
 {publishedTime && <meta property="article:published_time" content={publishedTime.toISOString()} />}
 {modifiedTime && <meta property="article:modified_time" content={modifiedTime.toISOString()} />}
-{tags.map((tag) => <meta property="article:tag" content={tag} />)}
+{tags.map((tag) => (
+  <meta property="article:tag" content={tag} />
+))}
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:site" content={`@${SITE.twitter}`} />
 <meta name="twitter:title" content={fullTitle} />
