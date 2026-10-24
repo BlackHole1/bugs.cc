@@ -15,19 +15,19 @@ vp install
 
 `vp dev` / `vp build` / `vp preview` are Vite+ built-ins that run plain Vite, not Astro. Run this project's scripts with `vp run <script>` (or `vpr <script>`).
 
-| Command                          | What it does                                                                                                                                                                         |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `vpr dev`                        | Dev server                                                                                                                                                                           |
-| `vpr build`                      | Build to `dist/` (always `--force`; see AGENTS.md for why), then index it for search (`pagefind --site dist`)                                                                        |
-| `vpr preview`                    | Preview `dist/`                                                                                                                                                                      |
-| `vpr check`                      | `astro check`: typechecks `.astro` files and generates the `.astro/` content types that `vp check` needs                                                                             |
-| `vp check` / `vp check --fix`    | Format check, lint, and type-aware lint with type checks in one pass. Config: the `fmt` and `lint` blocks in `vite.config.ts`. `.astro` files are formatted by oxfmt's Astro support |
-| `vpr lint` / `fmt` / `fmt:check` | `vp lint --deny-warnings` plus markdownlint; `vp fmt`                                                                                                                                |
-| `vpr lint:md` / `lint:md:fix`    | markdownlint on every `.md` / `.mdx` (README, posts, pages); `:fix` rewrites what is fixable. Config: `.markdownlint-cli2.jsonc`                                                     |
-| `vp test run`                    | Vitest (`vitest.config.ts`): source-level content checks plus unit tests, no prior build needed. `vp test watch` (or `vpr test:watch`) for watch mode                                |
-| `vpr img`                        | Compress PNGs and JPEGs under `public/images/`; `--check` only checks, used as a CI gate                                                                                             |
-| `vpr og` / `favicon` / `font`    | Regenerate the OG image, favicon, and code-font subset. Only needed when those assets change.                                                                                        |
-| `vpr lh`                         | After a build, run Lighthouse on the main pages (desktop + mobile). Reports go to `.lh/`.                                                                                            |
+| Command                          | What it does                                                                                                                                                                                                                                            |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `vpr dev`                        | Dev server                                                                                                                                                                                                                                              |
+| `vpr build`                      | Build to `dist/`, then index it for search (`pagefind --site dist`). Always `--force` (as is `vpr dev`): the Astro content layer cache does not invalidate when `ec.config.mjs` or a Markdown plugin changes, so posts would render with the old output |
+| `vpr preview`                    | Preview `dist/`                                                                                                                                                                                                                                         |
+| `vpr check`                      | `astro check`: typechecks `.astro` files and generates the `.astro/` content types that `vp check` needs                                                                                                                                                |
+| `vp check` / `vp check --fix`    | Format check, lint, and type-aware lint with type checks in one pass. Config: the `fmt` and `lint` blocks in `vite.config.ts`. `.astro` files are formatted by oxfmt's Astro support                                                                    |
+| `vpr lint` / `fmt` / `fmt:check` | `vp lint --deny-warnings` plus markdownlint; `vp fmt`                                                                                                                                                                                                   |
+| `vpr lint:md` / `lint:md:fix`    | markdownlint on every `.md` / `.mdx` (README, posts, pages); `:fix` rewrites what is fixable. Config: `.markdownlint-cli2.jsonc`                                                                                                                        |
+| `vp test run`                    | Vitest (`vitest.config.ts`): source-level content checks plus unit tests, no prior build needed. `vp test watch` (or `vpr test:watch`) for watch mode                                                                                                   |
+| `vpr img`                        | Compress PNGs and JPEGs under `public/images/`; `--check` only checks, used as a CI gate                                                                                                                                                                |
+| `vpr og` / `favicon` / `font`    | Regenerate the OG image, favicon, and code-font subset. Only needed when those assets change.                                                                                                                                                           |
+| `vpr lh`                         | After a build, run Lighthouse on the main pages (desktop + mobile). Reports go to `.lh/`.                                                                                                                                                               |
 
 Scripts under `scripts/` run with `vpx` (Node with TypeScript support).
 
@@ -64,5 +64,3 @@ aliases: [/zh/p/old-url/] # old URL, full path (language prefix and trailing sla
 - Images get `width`/`height` and lazy loading automatically. The first image of a post is loaded eagerly (`fetchpriority="high"`) when it sits near the top, since it is then the page's LCP element; an explicit `loading=` attribute on an `<img>` is kept as written.
 - Code blocks support Expressive Code `title=` / `{1,3-5}` / `ins=` / `del=` / `collapse=`, and comment markers `// [!code highlight]`, `// [!code ++]`, `// [!code --]`, `// [!code word:foo]`.
 - Adjacent code blocks tagged `group` (for example ` ```cpp title="a.h" group `) render as one block with tabs; the `title` is the tab label.
-
-Full conventions, routes, and implementation decisions are in [AGENTS.md](AGENTS.md).
