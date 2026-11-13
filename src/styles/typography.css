@@ -641,9 +641,7 @@ a[data-footnote-ref].is-active {
   top: 0;
   left: 0;
   pointer-events: none;
-  -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
-  -webkit-mask-size: 100% 100%;
   mask-size: 100% 100%;
 }
 
@@ -666,7 +664,7 @@ a[data-footnote-ref].is-active {
     height var(--dur) var(--ease-out);
 }
 
-@supports not ((mask-image: none) or (-webkit-mask-image: none)) {
+@supports not (mask-image: none) {
   .toc-track {
     display: none;
   }

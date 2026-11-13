@@ -60,8 +60,11 @@ const switchFallback = switchHref === undefined && alternates[lang] !== undefine
 
 /**
  * Theme, before first paint: `data-theme` on `<html>` (`auto`, `light` or
- * `dark`) from `localStorage.theme`, `auto` when nothing valid is stored, and
- * the `theme-color` of the scheme that results (`auto` follows the OS). Kept
+ * `dark`) from `localStorage.theme`, `auto` when nothing valid is stored,
+ * `<meta name="color-scheme">` to match (`light dark` for `auto`, so the
+ * browser's own hint agrees with the CSS `color-scheme` that global.css keys
+ * on `data-theme`), and the `theme-color` of the scheme that results (`auto`
+ * follows the OS). It runs right after the `color-scheme` meta. Kept
  * as one statement with no dependencies so a syntax error in a bundle can
  * never leave the page in the wrong scheme; ThemeToggle.astro owns the rest
  * (the button, OS changes while `auto`, prerendered and restored pages).
@@ -70,6 +73,8 @@ const themeScript =
   `(function(){var t;try{t=localStorage.getItem('theme')}catch(e){}` +
   `if(t!=='light'&&t!=='dark')t='auto';` +
   `document.documentElement.dataset.theme=t;` +
+  `var c=document.querySelector('meta[name=color-scheme]');` +
+  `if(c)c.content=t==='auto'?'light dark':t;` +
   `var d=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);` +
   `var m=document.querySelector('meta[name=theme-color]');` +
   `if(m)m.content=d?${JSON.stringify(SITE.themeColor.dark)}:${JSON.stringify(SITE.themeColor.light)}})();`;

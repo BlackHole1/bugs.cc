@@ -24,8 +24,8 @@ import { SITE } from '@/lib/site';
  * a light one auto, dark, light, auto.
  *
  * The script below (inlined by Astro) does the rest: pressing the button
- * advances the state, stores it and updates the attribute, the name and
- * `theme-color`, inside a view transition that wipes the new page down over
+ * advances the state, stores it and updates the attribute,
+ * `<meta name="color-scheme">`, the name and `theme-color`, inside a view transition that wipes the new page down over
  * the old one (global.css, `data-theme-switch`); a change of the OS scheme
  * is followed (`theme-color` and
  * the name depend on it); another tab's choice is picked up through the
@@ -88,6 +88,7 @@ const t = useTranslations(lang);
   if (button) {
     const root = document.documentElement;
     const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    const schemeMeta = document.querySelector<HTMLMetaElement>('meta[name="color-scheme"]');
     const media = matchMedia('(prefers-color-scheme: dark)');
 
     const os = (): Scheme => (media.matches ? 'dark' : 'light');
@@ -105,6 +106,8 @@ const t = useTranslations(lang);
 
     const apply = (theme: Theme) => {
       root.dataset.theme = theme;
+      // The browser's hint follows the override (`light dark` follows the OS).
+      if (schemeMeta) schemeMeta.content = theme === 'auto' ? 'light dark' : theme;
       // The name says what the next press does.
       button.setAttribute('aria-label', label(next(theme)));
       if (meta) {
