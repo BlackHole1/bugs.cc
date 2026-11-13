@@ -722,11 +722,6 @@ main:focus {
   min-height: var(--tap);
 }
 
-/* Native scroll lock while the lightbox dialog is open. */
-html.lightbox-open {
-  overflow: hidden;
-}
-
 @media print {
   html {
     background: #fff;
